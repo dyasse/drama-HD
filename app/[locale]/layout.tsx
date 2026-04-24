@@ -4,11 +4,11 @@ import { isValidLocale } from '../../i18n/config';
 
 type LocaleLayoutProps = {
   children: ReactNode;
-  params: Promise<{ locale: string }>;
+  params: { locale: string };
 };
 
-export default async function LocaleLayout({ children, params }: LocaleLayoutProps) {
-  const { locale } = await params;
+export default function LocaleLayout({ children, params }: LocaleLayoutProps) {
+  const { locale } = params;
 
   if (!isValidLocale(locale)) {
     notFound();
@@ -17,7 +17,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   const dir = locale === 'ar' ? 'rtl' : 'ltr';
 
   return (
-    <div lang={locale} dir={dir}>
+    <div lang={locale} dir={dir} style={{ padding: '2rem 1.25rem' }}>
       {children}
     </div>
   );
