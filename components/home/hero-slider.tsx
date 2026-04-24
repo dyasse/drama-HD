@@ -1,33 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
-import type { Show } from '../../lib/data/content';
 import type { Locale } from '../../i18n/config';
+import type { MediaItem } from '../../lib/data/media';
+import { PosterImage } from '../ui/poster-image';
 
-export function HeroSlider({ items, locale }: { items: Show[]; locale: Locale }) {
+export function HeroSlider({ item, locale }: { item: MediaItem; locale: Locale }) {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {items.map((item, index) => (
-        <motion.article
-          key={item.id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: index * 0.08 }}
-          className="relative overflow-hidden rounded-2xl shadow-card"
-        >
-          <Image src={item.cover} alt={item.title} width={800} height={480} className="h-72 w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 text-white">
-            <p className="inline-block rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-black">Featured</p>
-            <h2 className="mt-2 text-xl font-semibold">{item.title}</h2>
-            <p className="mt-1 text-sm text-zinc-200">{item.description}</p>
-            <Link href={`/${locale}/watch/${item.id}`} className="mt-3 inline-block rounded-full bg-emerald px-3 py-1.5 text-sm font-semibold">
-              Watch now
-            </Link>
-          </div>
-        </motion.article>
-      ))}
-    </div>
+    <motion.article
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className="relative overflow-hidden rounded-2xl shadow-card"
+    >
+      <PosterImage src={item.backdrop} alt={item.title} width={1200} height={600} className="h-[380px] w-full object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent p-6 text-cream">
+        <p className="inline-block rounded-full bg-gold px-3 py-1 text-xs font-semibold text-black">Trending Now</p>
+        <h2 className="mt-3 text-3xl font-semibold">{item.title}</h2>
+        <p className="mt-2 max-w-2xl text-sm text-cream/90">{item.description}</p>
+        <div className="mt-2 text-sm text-gold">TMDB ⭐ {item.rating.toFixed(1)}</div>
+        <Link href={`/${locale}/watch/${item.id}`} className="mt-4 inline-block rounded-full bg-emerald px-4 py-2 text-sm font-semibold text-cream">
+          Watch now
+        </Link>
+      </div>
+    </motion.article>
   );
 }
