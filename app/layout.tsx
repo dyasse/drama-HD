@@ -1,29 +1,16 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Drama HD',
-  description: 'Watch premium dramas with 20 free episodes and a $6 monthly plan.',
+  title: 'Drama HD Streaming',
+  description: 'Minimal short-series streaming platform with freemium unlock logic.',
 };
 
-type RootLayoutProps = {
-  children: ReactNode;
-};
-
-export default function RootLayout({ children }: RootLayoutProps) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body
-        style={{
-          margin: 0,
-          fontFamily: 'Inter, system-ui, sans-serif',
-          background: 'linear-gradient(180deg, #023430 0%, #012622 100%)',
-          color: '#f8efc8',
-          minHeight: '100vh',
-        }}
-      >
-        {children}
-      </body>
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen transition-colors duration-300">{children}</body>
     </html>
   );
 }
