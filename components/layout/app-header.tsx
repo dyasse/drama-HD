@@ -16,8 +16,10 @@ export function AppHeader({ locale }: { locale: Locale }) {
         </Link>
         <nav className="hidden items-center gap-4 text-sm md:flex">
           <Link href={`/${locale}`}>{t.home}</Link>
-          <Link href={`/${locale}/series`}>{t.series}</Link>
+          <Link href={`/${locale}/movies`}>{t.movies}</Link>
+          <Link href={`/${locale}/tv-series`}>{t.tvSeries}</Link>
           <Link href={`/${locale}/anime`}>{t.anime}</Link>
+          <Link href={`/${locale}/search`}>{t.search}</Link>
           <Link href={`/${locale}/settings`}>{t.settings}</Link>
         </nav>
         <div className="flex items-center gap-2">
