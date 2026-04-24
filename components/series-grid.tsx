@@ -19,10 +19,10 @@ export function SeriesGrid({ items, locale }: { items: Show[]; locale: Locale })
     return items.filter((item) => item.language === 'FR');
   }, [filter, items]);
 
-  const tabs: { key: Filter; label: string }[] = [
-    { key: 'translated', label: t.translated },
-    { key: 'english', label: t.english },
-    { key: 'french', label: t.french },
+  const tabs: { key: Filter; label: string; subtitle: string }[] = [
+    { key: 'translated', label: t.translated, subtitle: 'AR audio • Motrjam subtitles' },
+    { key: 'english', label: t.english, subtitle: 'English subtitles' },
+    { key: 'french', label: t.french, subtitle: 'Sous-titres français' },
   ];
 
   return (
@@ -33,9 +33,10 @@ export function SeriesGrid({ items, locale }: { items: Show[]; locale: Locale })
             type="button"
             key={tab.key}
             onClick={() => setFilter(tab.key)}
-            className={`rounded-full px-4 py-1.5 text-sm ${filter === tab.key ? 'bg-emerald text-white' : 'border border-emerald/25'}`}
+            className={`rounded-2xl px-4 py-2 text-left text-sm ${filter === tab.key ? 'bg-emerald text-white' : 'border border-emerald/25 bg-white/70 dark:bg-zinc-900/70'}`}
           >
-            {tab.label}
+            <span className="block font-semibold">{tab.label}</span>
+            <span className={`block text-xs ${filter === tab.key ? 'text-cream/90' : 'text-zinc-500 dark:text-zinc-300'}`}>{tab.subtitle}</span>
           </button>
         ))}
       </div>
