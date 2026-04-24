@@ -31,7 +31,7 @@ export function VideoPlayerPanel({ show, locale }: { show: Show; locale: Locale 
             <div className="grid h-[360px] place-items-center bg-zinc-900/95 text-center">
               <Lock size={42} className="text-gold" />
               <p className="mt-3 max-w-xs text-lg font-semibold">Episode {episode} requires Premium access.</p>
-              <button onClick={() => setOpenModal(true)} className="mt-4 rounded-full bg-gold px-4 py-2 font-semibold text-zinc-950">
+              <button type="button" onClick={() => setOpenModal(true)} className="mt-4 rounded-full bg-gold px-4 py-2 font-semibold text-zinc-950">
                 {t.unlock}
               </button>
             </div>
