@@ -9,7 +9,10 @@ export default async function AnimePage({ params }: { params: Promise<{ locale: 
 
   return (
     <main>
-      <h1 className="mb-4 text-2xl font-bold">Short-Form Anime</h1>
+      <h1 className="text-2xl font-bold">Short-Form Anime</h1>
+      <p className="mb-4 mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+        Dedicated mobile-first anime stories with compact episodes and fast pacing.
+      </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {animeList.map((item) => (
           <Link key={item.id} href={`/${locale}/watch/${item.id}`} className="group overflow-hidden rounded-xl border border-gold/30 bg-black text-cream">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Lock, PlayCircle } from 'lucide-react';
 import type { Show } from '../../lib/data/content';
 import type { Locale } from '../../i18n/config';
@@ -17,6 +17,12 @@ export function VideoPlayerPanel({ show, locale }: { show: Show; locale: Locale 
   const [openModal, setOpenModal] = useState(false);
 
   const isPremiumEpisode = episode > 20;
+
+  useEffect(() => {
+    if (episode > 20) {
+      setOpenModal(true);
+    }
+  }, [episode]);
 
   return (
     <section className="grid gap-4 lg:grid-cols-[1fr_320px]">
