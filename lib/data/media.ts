@@ -13,11 +13,36 @@ export type MediaItem = {
   releaseDate?: string;
 };
 
+export type CastMember = {
+  id: number;
+  name: string;
+  character?: string;
+  image: string;
+};
+
+export type MediaDetail = MediaItem & {
+  runtime?: number;
+  genres: string[];
+  trailerKey?: string;
+  cast: CastMember[];
+  seasons?: Array<{ seasonNumber: number; episodeCount: number; name: string }>;
+};
+
+export type EpisodeItem = {
+  episodeNumber: number;
+  title: string;
+  description: string;
+  runtime?: number;
+  still: string;
+};
+
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/original';
 const FALLBACK_POSTER = 'https://placehold.co/780x1170/0a0a0a/FFFDD0?text=Drama+HD';
 
 export function localeToTmdbLanguage(locale: 'ar' | 'en' | 'fr') {
-  return locale === 'ar' ? 'ar-SA' : 'en-US';
+  if (locale === 'ar') return 'ar-SA';
+  if (locale === 'fr') return 'fr-FR';
+  return 'en-US';
 }
 
 function resolveTmdbImage(path?: string | null) {
@@ -121,7 +146,6 @@ export async function getTmdbGenres(mediaType: 'movie' | 'tv', locale: 'ar' | 'e
   return data.genres ?? [];
 }
 
-
 export async function getSeriesByLanguage(language: 'AR' | 'EN' | 'FR') {
   const locale = language === 'AR' ? 'ar' : language === 'FR' ? 'fr' : 'en';
   const data = await discoverMedia({ mediaType: 'tv', locale, page: 1 });
@@ -149,16 +173,144 @@ export async function getTopAiringAnime(): Promise<MediaItem[]> {
   }));
 }
 
-export async function getWatchMedia(mediaType: 'movie' | 'tv', id: number, locale: 'ar' | 'en' | 'fr'): Promise<MediaItem | null> {
-  const key = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_TMDB_API_KEY;
-  if (!key) return null;
+export async function getTmdbDetail(mediaType: 'movie' | 'tv', id: number, locale: 'ar' | 'en' | 'fr'): Promise<MediaDetail | null> {
+  const language = localeToTmdbLanguage(locale);
+  const [detail, credits, videos] = await Promise.all([
+    fetchTmdb(`/${mediaType}/${id}?language=${language}`, 1800),
+    fetchTmdb(`/${mediaType}/${id}/credits?language=${language}`, 1800),
+    fetchTmdb(`/${mediaType}/${id}/videos?language=${language}`, 1800),
+  ]);
 
-  const response = await fetch(
-    `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${key}&language=${localeToTmdbLanguage(locale)}`,
-    { next: { revalidate: 1800 } },
-  );
+  if (!detail?.id) return null;
 
+  const trailer = (videos.results ?? []).find((item: any) => item.site === 'YouTube' && item.type === 'Trailer');
+
+  const mapped = mapTmdbItem(detail, mediaType);
+  return {
+    ...mapped,
+    genres: (detail.genres ?? []).map((genre: { name?: string }) => genre.name).filter(Boolean),
+    runtime: detail.runtime ?? detail.episode_run_time?.[0],
+    trailerKey: trailer?.key,
+    cast: (credits.cast ?? []).slice(0, 12).map((member: any) => ({
+      id: member.id,
+      name: member.name ?? 'Unknown',
+      character: member.character,
+      image: resolveTmdbImage(member.profile_path),
+    })),
+    seasons:
+      mediaType === 'tv'
+        ? (detail.seasons ?? [])
+            .filter((season: any) => season.season_number > 0)
+            .map((season: any) => ({
+              seasonNumber: season.season_number,
+              episodeCount: season.episode_count ?? 0,
+              name: season.name ?? `Season ${season.season_number}`,
+            }))
+        : undefined,
+  };
+}
+
+export async function getTvSeasonEpisodes(
+  id: number,
+  seasonNumber: number,
+  locale: 'ar' | 'en' | 'fr',
+): Promise<{ seasonTitle: string; episodes: EpisodeItem[] }> {
+  const language = localeToTmdbLanguage(locale);
+  const season = await fetchTmdb(`/tv/${id}/season/${seasonNumber}?language=${language}`, 1800);
+
+  return {
+    seasonTitle: season.name ?? `Season ${seasonNumber}`,
+    episodes: (season.episodes ?? []).map((episode: any) => ({
+      episodeNumber: episode.episode_number,
+      title: episode.name ?? `Episode ${episode.episode_number}`,
+      description: episode.overview ?? 'No episode summary available yet.',
+      runtime: episode.runtime,
+      still: resolveTmdbImage(episode.still_path),
+    })),
+  };
+}
+
+export async function getAnimeDetail(id: number): Promise<MediaDetail | null> {
+  const response = await fetch(`https://api.jikan.moe/v4/anime/${id}/full`, { next: { revalidate: 1800 } });
   if (!response.ok) return null;
-  const item = await response.json();
-  return mapTmdbItem(item, mediaType);
+
+  const payload = await response.json();
+  const anime = payload.data;
+  if (!anime) return null;
+
+  const castResponse = await fetch(`https://api.jikan.moe/v4/anime/${id}/characters`, { next: { revalidate: 1800 } });
+  const castPayload = castResponse.ok ? await castResponse.json() : { data: [] };
+
+  return {
+    id: `anime-${anime.mal_id}`,
+    sourceId: anime.mal_id,
+    mediaType: 'anime',
+    title: anime.title ?? anime.title_english ?? 'Untitled anime',
+    description: anime.synopsis ?? 'No synopsis available yet.',
+    poster: anime.images?.jpg?.large_image_url ?? FALLBACK_POSTER,
+    backdrop: anime.trailer?.images?.maximum_image_url ?? anime.images?.jpg?.large_image_url ?? FALLBACK_POSTER,
+    rating: Number(anime.score ?? 0),
+    language: 'EN',
+    releaseDate: anime.aired?.from,
+    runtime: typeof anime.duration === 'string' ? Number.parseInt(anime.duration, 10) || undefined : undefined,
+    genres: (anime.genres ?? []).map((genre: { name: string }) => genre.name),
+    trailerKey: anime.trailer?.youtube_id,
+    cast: (castPayload.data ?? []).slice(0, 12).map((member: any) => ({
+      id: member.character?.mal_id ?? 0,
+      name: member.character?.name ?? 'Unknown',
+      character: member.role,
+      image: member.character?.images?.jpg?.image_url ?? FALLBACK_POSTER,
+    })),
+  };
+}
+
+export async function getAnimeEpisodes(id: number): Promise<EpisodeItem[]> {
+  const response = await fetch(`https://api.jikan.moe/v4/anime/${id}/episodes`, {
+    next: { revalidate: 1800 },
+  });
+
+  if (!response.ok) return [];
+  const payload = await response.json();
+
+  return (payload.data ?? []).map((episode: any) => ({
+    episodeNumber: episode.mal_id ?? episode.episode_id,
+    title: episode.title ?? `Episode ${episode.mal_id}`,
+    description: episode.synopsis ?? 'No episode summary available yet.',
+    runtime: undefined,
+    still: FALLBACK_POSTER,
+  }));
+}
+
+
+export async function mapAnimeToTmdbTvId(animeId: number, fallbackTitle?: string): Promise<number | null> {
+  const anime = fallbackTitle
+    ? { title: fallbackTitle }
+    : await fetch(`https://api.jikan.moe/v4/anime/${animeId}`, { next: { revalidate: 3600 } })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload) => payload?.data ?? null);
+
+  const title = anime?.title ?? anime?.title_english;
+  if (!title) return null;
+
+  const data = await fetchTmdb(`/search/tv?query=${encodeURIComponent(title)}&language=en-US&page=1`, 3600);
+  const first = (data.results ?? [])[0];
+  return first?.id ?? null;
+}
+
+export async function getWatchMedia(mediaType: 'movie' | 'tv', id: number, locale: 'ar' | 'en' | 'fr'): Promise<MediaItem | null> {
+  const detail = await getTmdbDetail(mediaType, id, locale);
+  if (!detail) return null;
+
+  return {
+    id: detail.id,
+    sourceId: detail.sourceId,
+    mediaType: detail.mediaType,
+    title: detail.title,
+    description: detail.description,
+    poster: detail.poster,
+    backdrop: detail.backdrop,
+    rating: detail.rating,
+    language: detail.language,
+    releaseDate: detail.releaseDate,
+  };
 }
