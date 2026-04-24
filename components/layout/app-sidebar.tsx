@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Clapperboard, Home, MonitorPlay, Search, Settings, Sparkles, Tv, Film } from 'lucide-react';
+import { Clapperboard, Home, Search, Settings, Sparkles, Tv, Film, ShieldCheck } from 'lucide-react';
 import type { Locale } from '../../i18n/config';
 import { uiCopy } from '../../lib/data/i18n';
 
@@ -11,6 +11,7 @@ export function AppSidebar({ locale }: { locale: Locale }) {
     { href: `/${locale}/movies`, label: t.movies, icon: Film },
     { href: `/${locale}/tv-series`, label: t.tvSeries, icon: Tv },
     { href: `/${locale}/anime`, label: t.anime, icon: Clapperboard },
+    { href: `/${locale}/dmca`, label: t.dmca, icon: ShieldCheck },
     { href: `/${locale}/search`, label: t.search, icon: Search },
     { href: `/${locale}/settings`, label: t.settings, icon: Settings },
   ];

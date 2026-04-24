@@ -25,6 +25,8 @@ export const uiCopy: Record<Locale, Record<string, string>> = {
     language: 'Language',
     genres: 'Genres',
     realtimeSearch: 'Real-time TMDB Search',
+    dmca: 'DMCA / Copyright',
+    footerDisclaimer: 'Disclaimer: Drama HD only indexes metadata and third-party embeds. We do not host or upload video files.',
   },
   ar: {
     home: 'الرئيسية',
@@ -50,6 +52,8 @@ export const uiCopy: Record<Locale, Record<string, string>> = {
     language: 'اللغة',
     genres: 'التصنيفات',
     realtimeSearch: 'بحث TMDB الفوري',
+    dmca: 'حقوق النشر / DMCA',
+    footerDisclaimer: 'إخلاء مسؤولية: دراما HD يقوم فقط بفهرسة البيانات وروابط التشغيل الخارجية ولا يستضيف أي ملفات فيديو.',
   },
   fr: {
     home: 'Accueil',
@@ -75,5 +79,7 @@ export const uiCopy: Record<Locale, Record<string, string>> = {
     language: 'Langue',
     genres: 'Genres',
     realtimeSearch: 'Recherche TMDB en direct',
+    dmca: 'DMCA / Copyright',
+    footerDisclaimer: 'Avertissement : Drama HD indexe uniquement les métadonnées et les lecteurs tiers. Nous n’hébergeons aucun fichier vidéo.',
   },
 };
