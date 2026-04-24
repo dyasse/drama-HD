@@ -19,7 +19,7 @@ export function ContentRow({ title, items, locale }: { title: string; items: Med
             transition={{ delay: index * 0.03, duration: 0.2 }}
           >
             <Link
-              href={`/${locale}/watch/${item.mediaType}/${item.sourceId}`}
+              href={`/${locale}/${item.mediaType}/${item.sourceId}`}
               className="block min-w-60 overflow-hidden rounded-xl border border-gold/30 bg-white/60 transition hover:-translate-y-1 hover:border-emerald dark:bg-zinc-900/60"
             >
               <PosterImage src={item.backdrop || item.poster} alt={item.title} width={640} height={320} className="h-40 w-full object-cover" />

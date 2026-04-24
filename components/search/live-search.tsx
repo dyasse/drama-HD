@@ -38,7 +38,7 @@ export function LiveSearch({ locale }: { locale: Locale }) {
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {results.map((item) => (
-          <Link key={item.id} href={`/${locale}/watch/${item.mediaType}/${item.sourceId}`} className="overflow-hidden rounded-xl border border-gold/30 bg-white/70 dark:bg-zinc-900/70">
+          <Link key={item.id} href={`/${locale}/${item.mediaType}/${item.sourceId}`} className="overflow-hidden rounded-xl border border-gold/30 bg-white/70 dark:bg-zinc-900/70">
             <PosterImage src={item.poster} alt={item.title} width={640} height={900} className="h-72 w-full object-cover" />
             <div className="p-3">
               <h3 className="line-clamp-1 font-semibold">{item.title}</h3>

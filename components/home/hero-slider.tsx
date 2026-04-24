@@ -20,7 +20,7 @@ export function HeroSlider({ item, locale }: { item: MediaItem; locale: Locale }
         <h2 className="mt-3 text-3xl font-semibold">{item.title}</h2>
         <p className="mt-2 max-w-2xl text-sm text-cream/90">{item.description}</p>
         <div className="mt-2 text-sm text-gold">TMDB ⭐ {item.rating.toFixed(1)}</div>
-        <Link href={`/${locale}/watch/${item.mediaType}/${item.sourceId}`} className="mt-4 inline-block rounded-full bg-emerald px-4 py-2 text-sm font-semibold text-cream">
+        <Link href={`/${locale}/${item.mediaType}/${item.sourceId}`} className="mt-4 inline-block rounded-full bg-emerald px-4 py-2 text-sm font-semibold text-cream">
           Watch now
         </Link>
       </div>
