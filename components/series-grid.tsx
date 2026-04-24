@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Show } from '../lib/data/content';
 import type { Locale } from '../i18n/config';
 import { uiCopy } from '../lib/data/i18n';
@@ -41,7 +42,7 @@ export function SeriesGrid({ items, locale }: { items: Show[]; locale: Locale })
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((item) => (
           <Link key={item.id} href={`/${locale}/watch/${item.id}`} className="overflow-hidden rounded-xl border border-emerald/15 bg-white/60 dark:bg-zinc-900/70">
-            <img src={item.cover} alt={item.title} className="h-44 w-full object-cover" />
+            <Image src={item.cover} alt={item.title} width={640} height={352} className="h-44 w-full object-cover" />
             <div className="p-3">
               <p className="font-semibold">{item.title}</p>
               <p className="text-xs text-zinc-500 dark:text-zinc-300">{item.description}</p>

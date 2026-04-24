@@ -4,8 +4,9 @@ import { uiCopy } from '../../lib/data/i18n';
 import { ContentRow } from '../../components/home/content-row';
 import { HeroSlider } from '../../components/home/hero-slider';
 
-export default function HomePage({ params }: { params: { locale: string } }) {
-  const locale = params.locale as Locale;
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: rawLocale } = await params;
+  const locale = rawLocale as Locale;
   const t = uiCopy[locale];
 
   return (

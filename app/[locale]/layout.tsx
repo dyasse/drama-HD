@@ -6,11 +6,11 @@ import { isValidLocale, type Locale } from '../../i18n/config';
 
 type LocaleLayoutProps = {
   children: ReactNode;
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 };
 
-export default function LocaleLayout({ children, params }: LocaleLayoutProps) {
-  const { locale } = params;
+export default async function LocaleLayout({ children, params }: LocaleLayoutProps) {
+  const { locale } = await params;
 
   if (!isValidLocale(locale)) notFound();
 
