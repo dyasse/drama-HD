@@ -19,6 +19,7 @@ export function AppHeader({ locale }: { locale: Locale }) {
           <Link href={`/${locale}/movies`}>{t.movies}</Link>
           <Link href={`/${locale}/tv-series`}>{t.tvSeries}</Link>
           <Link href={`/${locale}/anime`}>{t.anime}</Link>
+          <Link href={`/${locale}/dmca`}>{t.dmca}</Link>
           <Link href={`/${locale}/search`}>{t.search}</Link>
           <Link href={`/${locale}/settings`}>{t.settings}</Link>
         </nav>

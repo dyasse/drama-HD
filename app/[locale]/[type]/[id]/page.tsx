@@ -45,7 +45,7 @@ export default async function MediaDetailPage({ params }: { params: Promise<{ lo
                 ))}
               </div>
               <div className="flex flex-wrap gap-3 pt-2">
-                <Link href={mediaType === 'anime' ? `/${locale}/anime/${sourceId}/season/1/episode/1` : `/${locale}/watch/${mediaType}/${sourceId}`} className="inline-flex items-center gap-2 rounded-full bg-emerald px-4 py-2 font-semibold text-cream">
+                <Link href={`/${locale}/watch/${mediaType}/${sourceId}`} className="inline-flex items-center gap-2 rounded-full bg-emerald px-4 py-2 font-semibold text-cream">
                   <Play size={16} /> Watch Now
                 </Link>
                 {detail.trailerKey ? (

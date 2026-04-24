@@ -153,8 +153,8 @@ export async function getSeriesByLanguage(language: 'AR' | 'EN' | 'FR') {
 }
 
 export async function getTopAiringAnime(): Promise<MediaItem[]> {
-  const response = await fetch('https://api.jikan.moe/v4/top/anime?filter=airing&limit=18', {
-    next: { revalidate: 1800 },
+  const response = await fetch('https://api.jikan.moe/v4/top/anime?filter=bypopularity&limit=18', {
+    next: { revalidate: 300 },
   });
 
   if (!response.ok) return [];

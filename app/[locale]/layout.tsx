@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { AppHeader } from '../../components/layout/app-header';
+import { AppFooter } from '../../components/layout/app-footer';
 import { AppSidebar } from '../../components/layout/app-sidebar';
 import { ThemeProvider } from '../../components/theme-provider';
 import { isValidLocale, type Locale } from '../../i18n/config';
@@ -21,7 +22,10 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
         <AppHeader locale={locale as Locale} />
         <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
           <AppSidebar locale={locale as Locale} />
-          <div>{children}</div>
+          <div>
+            {children}
+            <AppFooter locale={locale as Locale} />
+          </div>
         </div>
       </div>
     </ThemeProvider>
