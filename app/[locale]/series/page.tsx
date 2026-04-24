@@ -1,13 +1,6 @@
-import type { Locale } from '../../../i18n/config';
-import { SeriesGrid } from '../../../components/series-grid';
+import { redirect } from 'next/navigation';
 
-export default async function SeriesPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function LegacySeriesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-
-  return (
-    <main>
-      <h1 className="mb-4 text-2xl font-bold">Series Library</h1>
-      <SeriesGrid locale={locale as Locale} />
-    </main>
-  );
+  redirect(`/${locale}/tv-series`);
 }

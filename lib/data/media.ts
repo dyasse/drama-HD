@@ -10,10 +10,15 @@ export type MediaItem = {
   backdrop: string;
   rating: number;
   language: 'AR' | 'EN' | 'FR';
+  releaseDate?: string;
 };
 
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w780';
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/original';
 const FALLBACK_POSTER = 'https://placehold.co/780x1170/0a0a0a/FFFDD0?text=Drama+HD';
+
+export function localeToTmdbLanguage(locale: 'ar' | 'en' | 'fr') {
+  return locale === 'ar' ? 'ar-SA' : 'en-US';
+}
 
 function resolveTmdbImage(path?: string | null) {
   return path ? `${TMDB_IMAGE_BASE}${path}` : FALLBACK_POSTER;
@@ -25,12 +30,12 @@ function detectLanguage(languageCode: string): 'AR' | 'EN' | 'FR' {
   return 'EN';
 }
 
-async function fetchTmdb(path: string) {
-  const key = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+async function fetchTmdb(path: string, revalidate = 900) {
+  const key = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_TMDB_API_KEY;
   if (!key) return { results: [] };
 
   const response = await fetch(`https://api.themoviedb.org/3${path}${path.includes('?') ? '&' : '?'}api_key=${key}`, {
-    next: { revalidate: 900 },
+    next: { revalidate },
   });
 
   if (!response.ok) {
@@ -42,55 +47,88 @@ async function fetchTmdb(path: string) {
 
 function mapTmdbItem(item: any, mediaTypeOverride?: 'movie' | 'tv'): MediaItem {
   const mediaType = mediaTypeOverride ?? (item.media_type === 'movie' ? 'movie' : 'tv');
-  const title = item.title ?? item.name ?? 'Untitled';
 
   return {
     id: `${mediaType}-${item.id}`,
     sourceId: item.id,
     mediaType,
-    title,
+    title: item.title ?? item.name ?? 'Untitled',
     description: item.overview ?? 'No description available yet.',
     poster: resolveTmdbImage(item.poster_path),
     backdrop: resolveTmdbImage(item.backdrop_path),
     rating: Number(item.vote_average ?? 0),
     language: detectLanguage(item.original_language ?? 'en'),
+    releaseDate: item.release_date ?? item.first_air_date,
   };
 }
 
-export async function getHomeCollections() {
-  const [trending, arabicSeries, international, kDrama] = await Promise.all([
-    fetchTmdb('/trending/all/week?language=en-US'),
-    fetchTmdb('/discover/tv?language=en-US&with_original_language=ar&sort_by=popularity.desc'),
-    fetchTmdb('/trending/all/day?language=en-US'),
-    fetchTmdb('/discover/tv?language=en-US&with_original_language=ko&sort_by=vote_average.desc&vote_count.gte=100'),
+export async function getHomeCollections(locale: 'ar' | 'en' | 'fr') {
+  const language = localeToTmdbLanguage(locale);
+
+  const [trendingToday, popularMovies, topRatedArabicSeries] = await Promise.all([
+    fetchTmdb(`/trending/all/day?language=${language}`),
+    fetchTmdb(`/movie/popular?language=${language}&page=1`),
+    fetchTmdb(`/discover/tv?language=${language}&with_original_language=ar&sort_by=vote_average.desc&vote_count.gte=150&page=1`),
   ]);
 
-  const trendingItems = (trending.results ?? []).filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv').map((item: any) => mapTmdbItem(item));
+  const trendingItems = (trendingToday.results ?? [])
+    .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
+    .map((item: any) => mapTmdbItem(item));
 
   return {
     hero: trendingItems[0],
-    popularArabicSeries: (arabicSeries.results ?? []).slice(0, 12).map((item: any) => mapTmdbItem(item, 'tv')),
-    trendingInternational: (international.results ?? [])
-      .filter((item: any) => (item.media_type === 'movie' || item.media_type === 'tv') && item.original_language !== 'ar')
-      .slice(0, 12)
-      .map((item: any) => mapTmdbItem(item)),
-    topRatedKDramas: (kDrama.results ?? []).slice(0, 12).map((item: any) => mapTmdbItem(item, 'tv')),
+    trendingToday: trendingItems.slice(0, 16),
+    popularMovies: (popularMovies.results ?? []).slice(0, 16).map((item: any) => mapTmdbItem(item, 'movie')),
+    topRatedArabicSeries: (topRatedArabicSeries.results ?? []).slice(0, 16).map((item: any) => mapTmdbItem(item, 'tv')),
   };
 }
 
-export async function getSeriesByLanguage(language: 'AR' | 'EN' | 'FR') {
-  const params =
-    language === 'AR'
-      ? '/discover/tv?language=en-US&with_original_language=ar&sort_by=popularity.desc'
-      : language === 'FR'
-        ? '/discover/tv?language=fr-FR&with_original_language=fr&sort_by=popularity.desc'
-        : '/discover/tv?language=en-US&with_original_language=en&sort_by=popularity.desc';
+export async function discoverMedia(params: {
+  mediaType: 'movie' | 'tv';
+  locale: 'ar' | 'en' | 'fr';
+  page?: number;
+  genreId?: number;
+}) {
+  const language = localeToTmdbLanguage(params.locale);
+  const page = params.page ?? 1;
+  const withGenres = params.genreId ? `&with_genres=${params.genreId}` : '';
 
-  const data = await fetchTmdb(params);
-  return (data.results ?? []).slice(0, 18).map((item: any) => mapTmdbItem(item, 'tv'));
+  const data = await fetchTmdb(
+    `/discover/${params.mediaType}?language=${language}&sort_by=popularity.desc&include_adult=false&page=${page}${withGenres}`,
+  );
+
+  return {
+    page: data.page ?? page,
+    totalPages: Math.min(data.total_pages ?? 1, 500),
+    results: (data.results ?? []).map((item: any) => mapTmdbItem(item, params.mediaType)),
+  };
 }
 
-export async function getTopAiringAnime() {
+export async function searchTmdb(query: string, locale: 'ar' | 'en' | 'fr') {
+  if (!query.trim()) return [];
+  const language = localeToTmdbLanguage(locale);
+  const data = await fetchTmdb(`/search/multi?query=${encodeURIComponent(query)}&language=${language}&include_adult=false&page=1`, 60);
+
+  return (data.results ?? [])
+    .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
+    .slice(0, 20)
+    .map((item: any) => mapTmdbItem(item));
+}
+
+export async function getTmdbGenres(mediaType: 'movie' | 'tv', locale: 'ar' | 'en' | 'fr') {
+  const language = localeToTmdbLanguage(locale);
+  const data = await fetchTmdb(`/genre/${mediaType}/list?language=${language}`, 86400);
+  return data.genres ?? [];
+}
+
+
+export async function getSeriesByLanguage(language: 'AR' | 'EN' | 'FR') {
+  const locale = language === 'AR' ? 'ar' : language === 'FR' ? 'fr' : 'en';
+  const data = await discoverMedia({ mediaType: 'tv', locale, page: 1 });
+  return data.results.slice(0, 18);
+}
+
+export async function getTopAiringAnime(): Promise<MediaItem[]> {
   const response = await fetch('https://api.jikan.moe/v4/top/anime?filter=airing&limit=18', {
     next: { revalidate: 1800 },
   });
@@ -111,50 +149,16 @@ export async function getTopAiringAnime() {
   }));
 }
 
-export async function getWatchMediaByRouteId(routeId: string): Promise<MediaItem | null> {
-  if (routeId.startsWith('anime-')) {
-    const malId = Number(routeId.split('-')[1]);
-    if (Number.isNaN(malId)) return null;
-    const response = await fetch(`https://api.jikan.moe/v4/anime/${malId}`,
-      { next: { revalidate: 1800 } });
-    if (!response.ok) return null;
-    const payload = await response.json();
-    const item = payload.data;
-    return {
-      id: routeId,
-      sourceId: malId,
-      mediaType: 'anime',
-      title: item?.title ?? 'Anime',
-      description: item?.synopsis ?? 'No synopsis available yet.',
-      poster: item?.images?.jpg?.large_image_url ?? FALLBACK_POSTER,
-      backdrop: item?.trailer?.images?.maximum_image_url ?? item?.images?.jpg?.large_image_url ?? FALLBACK_POSTER,
-      rating: Number(item?.score ?? 0),
-      language: 'EN',
-    };
-  }
-
-  const [mediaType, rawId] = routeId.split('-');
-  if (!rawId || (mediaType !== 'movie' && mediaType !== 'tv')) return null;
-  const sourceId = Number(rawId);
-  if (Number.isNaN(sourceId)) return null;
-
-  const key = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+export async function getWatchMedia(mediaType: 'movie' | 'tv', id: number, locale: 'ar' | 'en' | 'fr'): Promise<MediaItem | null> {
+  const key = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_TMDB_API_KEY;
   if (!key) return null;
-  const response = await fetch(`https://api.themoviedb.org/3/${mediaType}/${sourceId}?api_key=${key}&language=en-US`, {
-    next: { revalidate: 1800 },
-  });
+
+  const response = await fetch(
+    `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${key}&language=${localeToTmdbLanguage(locale)}`,
+    { next: { revalidate: 1800 } },
+  );
+
   if (!response.ok) return null;
   const item = await response.json();
-
-  return {
-    id: routeId,
-    sourceId,
-    mediaType,
-    title: item.title ?? item.name ?? 'Untitled',
-    description: item.overview ?? 'No description available yet.',
-    poster: resolveTmdbImage(item.poster_path),
-    backdrop: resolveTmdbImage(item.backdrop_path),
-    rating: Number(item.vote_average ?? 0),
-    language: detectLanguage(item.original_language ?? 'en'),
-  };
+  return mapTmdbItem(item, mediaType);
 }
