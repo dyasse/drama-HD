@@ -9,7 +9,7 @@ const config: Config = {
         cream: '#FFFDD0',
         emerald: '#047857',
         gold: '#D4AF37',
-        matte: '#090909',
+        matte: '#0a0a0a',
       },
       boxShadow: {
         card: '0 12px 24px rgba(0,0,0,0.12)',
