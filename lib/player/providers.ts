@@ -1,6 +1,6 @@
 import type { ProviderBuildParams, ProviderDef, ProviderId } from './types';
 
-const PROVIDER_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+const MAX_PROVIDER_SLOTS = 12;
 const PROVIDER_HOST_WHITELIST_ENV = 'NEXT_PUBLIC_PROVIDER_HOST_WHITELIST';
 
 function readRuntimeEnv(key: string): string {
@@ -52,7 +52,7 @@ export function resolveProviderUrl(template: string, params: ProviderBuildParams
     .replaceAll('{e}', String(episode));
 }
 
-function createProviderDef(slot: (typeof PROVIDER_SLOTS)[number], whitelist: string[]): ProviderDef {
+function createProviderDef(slot: number, whitelist: string[]): ProviderDef {
   const envKey = `NEXT_PUBLIC_PROVIDER_${slot}_URL`;
   const template = normalizeProviderTemplate(readRuntimeEnv(envKey));
   const id = `p${slot}` as ProviderId;
@@ -79,7 +79,7 @@ function createProviderDef(slot: (typeof PROVIDER_SLOTS)[number], whitelist: str
 
 export function getProviderDefinitions(): ProviderDef[] {
   const whitelist = parseHostWhitelist(readRuntimeEnv(PROVIDER_HOST_WHITELIST_ENV));
-  return PROVIDER_SLOTS.map((slot) => createProviderDef(slot, whitelist));
+  return Array.from({ length: MAX_PROVIDER_SLOTS }, (_, index) => index + 1).map((slot) => createProviderDef(slot, whitelist));
 }
 
 export function getNextEnabledProvider(currentIndex: number, providers: ProviderDef[]): number {

@@ -3,7 +3,7 @@ watch all in one
 
 ## Licensed provider failover configuration
 
-The player uses exactly **8 licensed provider slots** from runtime environment variables and automatically fails over between enabled providers.
+The player supports up to **12 licensed provider slots** from runtime environment variables and automatically fails over between enabled providers.
 
 ### Required environment variables
 
@@ -15,6 +15,10 @@ The player uses exactly **8 licensed provider slots** from runtime environment v
 - `NEXT_PUBLIC_PROVIDER_6_URL`
 - `NEXT_PUBLIC_PROVIDER_7_URL`
 - `NEXT_PUBLIC_PROVIDER_8_URL`
+- `NEXT_PUBLIC_PROVIDER_9_URL`
+- `NEXT_PUBLIC_PROVIDER_10_URL`
+- `NEXT_PUBLIC_PROVIDER_11_URL`
+- `NEXT_PUBLIC_PROVIDER_12_URL`
 
 Optional:
 

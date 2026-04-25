@@ -1,6 +1,6 @@
 export type VideoType = 'movie' | 'tv';
 
-export type ProviderId = `p${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8}`;
+export type ProviderId = `p${number}`;
 
 export type ProviderBuildParams = {
   type: VideoType;
