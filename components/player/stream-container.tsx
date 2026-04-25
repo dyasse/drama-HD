@@ -18,18 +18,18 @@ export function StreamContainer({ iframeKey, src, title, onLoad, onError, overla
         src={src}
         title={title}
         className="h-full w-full"
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; web-share"
         allowFullScreen
         loading="eager"
-        referrerPolicy="strict-origin-when-cross-origin"
-        sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-forms"
+        referrerPolicy="no-referrer"
+        sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"
         onLoad={onLoad}
         onError={onError}
       />
+
       {overlayVisible && (
-        <button
-          type="button"
-          aria-label="Activate player"
+        <div
+          aria-hidden="true"
           onClick={onDismissOverlay}
           className="absolute inset-0 z-30 cursor-pointer bg-transparent"
         />
