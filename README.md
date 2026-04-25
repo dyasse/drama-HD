@@ -52,3 +52,21 @@ When `NEXT_PUBLIC_PROVIDER_HOST_WHITELIST` is set:
 - Automatic failover can be toggled in the UI.
 - On iframe timeout (12s) or load error, it rotates to the next enabled provider.
 - If no providers are enabled, a support message is shown instead of rendering a broken iframe.
+
+## Troubleshooting: `ERR_FAILED` on Vercel URLs
+
+If a browser shows `ERR_FAILED` (like `https://v0-drama-series-app.vercel.app/`), the issue is usually deployment or DNS, not app code.
+
+Quick check from terminal:
+
+```bash
+npm run check:url -- https://v0-drama-series-app.vercel.app/
+```
+
+What the script verifies:
+
+- DNS resolution for the hostname
+- HTTPS HEAD request response
+
+If DNS fails, the subdomain is unavailable (deleted, renamed, or not propagated).
+If DNS works but HTTPS fails, check Vercel project status, domain assignment, and firewall/network restrictions.
