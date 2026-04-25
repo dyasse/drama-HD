@@ -17,7 +17,7 @@ export function AppSidebar({ locale }: { locale: Locale }) {
   ];
 
   return (
-    <aside className="hidden lg:block">
+    <aside className="hidden md:block">
       <div className="sticky top-24 rounded-2xl border border-emerald/20 bg-white/70 p-4 shadow-card dark:bg-zinc-900/70">
         <p className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald">
           <Sparkles size={14} className="text-gold" /> Drama HD
