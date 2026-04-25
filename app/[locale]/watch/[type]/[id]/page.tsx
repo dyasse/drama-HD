@@ -98,7 +98,8 @@ export default async function WatchPage({
     return (
       <main className="space-y-4 bg-[#050505] px-0 pb-6 text-[#FFFDD0]">
         <WatchAutofocus />
-        <div className="mx-auto w-full max-w-7xl px-3 sm:px-4">
+        <StreamPlayer tmdbId={sourceId} type="movie" locale={locale as Locale} title={show.title} />
+        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2 px-3 sm:px-0">
           <Link
             href={`/${locale}`}
             className="inline-flex items-center rounded-full border border-[#047857] bg-[#047857] px-4 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]"
@@ -106,7 +107,6 @@ export default async function WatchPage({
             ← Back to Home
           </Link>
         </div>
-        <StreamPlayer tmdbId={sourceId} type="movie" locale={locale as Locale} title={show.title} />
         <div dir={isArabic ? 'rtl' : 'ltr'} className={isArabic ? 'px-3 text-right sm:px-0' : 'px-3 text-left sm:px-0'}>
           <h1 className="text-2xl font-bold">{show.title}</h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-300">{show.description}</p>
@@ -149,14 +149,6 @@ export default async function WatchPage({
     return (
       <main className="space-y-4 bg-[#050505] px-0 pb-6 text-[#FFFDD0]">
         <WatchAutofocus />
-        <div className="mx-auto w-full max-w-7xl px-3 sm:px-4">
-          <Link
-            href={`/${locale}`}
-            className="inline-flex items-center rounded-full border border-[#047857] bg-[#047857] px-4 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]"
-          >
-            ← Back to Home
-          </Link>
-        </div>
         <StreamPlayer
           tmdbId={sourceId}
           type="tv"
@@ -166,13 +158,27 @@ export default async function WatchPage({
           title={show.title}
           nextEpisodeHref={nextEpisodeHref ?? undefined}
         />
+        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2 px-3 sm:px-0">
+          <Link
+            href={`/${locale}`}
+            className="inline-flex items-center rounded-full border border-[#047857] bg-[#047857] px-4 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]"
+          >
+            ← Back to Home
+          </Link>
+          <a
+            href="#episode-list"
+            className="inline-flex items-center rounded-full border border-[#D4AF37] bg-black px-4 py-2 text-sm font-semibold text-[#D4AF37] transition hover:bg-[#D4AF37]/10"
+          >
+            Episode List
+          </a>
+        </div>
         <div dir={isArabic ? 'rtl' : 'ltr'} className={isArabic ? 'px-3 text-right sm:px-0' : 'px-3 text-left sm:px-0'}>
           <h1 className="text-2xl font-bold">{show.title}</h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-300">{show.description}</p>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">{seasonData.seasonTitle}</p>
         </div>
 
-        <section dir={isArabic ? 'rtl' : 'ltr'} className="mx-auto w-full max-w-5xl px-3 sm:px-0">
+        <section id="episode-list" dir={isArabic ? 'rtl' : 'ltr'} className="mx-auto w-full max-w-5xl scroll-mt-24 px-3 sm:px-0">
           <p className="mb-2 text-sm font-semibold text-[#FFFDD0]">{t.episodeSelector}</p>
           <div className="mb-3 flex flex-wrap gap-2">
             {(show.seasons?.length ? show.seasons : [{ seasonNumber: selectedSeason, episodeCount: seasonData.episodes.length, name: `${t.season} ${selectedSeason}` }]).map((season) => (
@@ -247,20 +253,26 @@ export default async function WatchPage({
   return (
     <main className="space-y-4 bg-[#050505] px-0 pb-6 text-[#FFFDD0]">
       <WatchAutofocus />
-      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4">
+      <StreamPlayer tmdbId={mappedTmdbId} type="tv" season={1} episode={selectedEpisode} locale={locale as Locale} title={anime.title} nextEpisodeHref={nextEpisodeHref ?? undefined} />
+      <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2 px-3 sm:px-0">
         <Link
           href={`/${locale}`}
           className="inline-flex items-center rounded-full border border-[#047857] bg-[#047857] px-4 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]"
         >
           ← Back to Home
         </Link>
+        <a
+          href="#episode-list"
+          className="inline-flex items-center rounded-full border border-[#D4AF37] bg-black px-4 py-2 text-sm font-semibold text-[#D4AF37] transition hover:bg-[#D4AF37]/10"
+        >
+          Episode List
+        </a>
       </div>
-      <StreamPlayer tmdbId={mappedTmdbId} type="tv" season={1} episode={selectedEpisode} locale={locale as Locale} title={anime.title} nextEpisodeHref={nextEpisodeHref ?? undefined} />
       <div dir={isArabic ? 'rtl' : 'ltr'} className={isArabic ? 'px-3 text-right sm:px-0' : 'px-3 text-left sm:px-0'}>
         <h1 className="text-2xl font-bold">{anime.title}</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">{anime.description}</p>
       </div>
-      <section dir={isArabic ? 'rtl' : 'ltr'} className="mx-auto w-full max-w-5xl px-3 sm:px-0">
+      <section id="episode-list" dir={isArabic ? 'rtl' : 'ltr'} className="mx-auto w-full max-w-5xl scroll-mt-24 px-3 sm:px-0">
         <p className="mb-2 text-sm font-semibold text-[#FFFDD0]">{t.episodeSelector}</p>
         <p className="mb-2 text-sm font-semibold text-[#047857]">Watching Now · {t.episode} {selectedEpisode}</p>
         <div className="overflow-x-auto rounded-xl border border-[#047857]/40 bg-black/40 p-2">
