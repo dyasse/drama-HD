@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { uiCopy } from '../../lib/data/i18n';
 import type { Locale } from '../../i18n/config';
 
@@ -17,14 +17,23 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
   const t = uiCopy[locale];
   const [isLoading, setIsLoading] = useState(true);
   const [overlayActive, setOverlayActive] = useState(true);
+  const [server, setServer] = useState<1 | 2>(1);
+
+  const hasValidTmdbId = Number.isFinite(tmdbId) && tmdbId > 0;
+  const normalizedType = type === 'movie' ? 'movie' : 'tv';
 
   const src = useMemo(() => {
-    if (type === 'movie') {
-      return `https://vidsrc.to/embed/movie/${tmdbId}`;
+    const queryBase = `${normalizedType}?${server === 1 ? 'id' : 'tmdb'}=${tmdbId}`;
+    const episodeQuery = normalizedType === 'tv' ? `&s=${season}&e=${episode}` : '';
+    if (server === 1) {
+      return `https://vidsrc.me/embed/${queryBase}${episodeQuery}`;
     }
+    return `https://www.2embed.cc/embed/${queryBase}${episodeQuery}`;
+  }, [episode, normalizedType, season, server, tmdbId]);
 
-    return `https://vidsrc.to/embed/tv/${tmdbId}/${season}/${episode}`;
-  }, [episode, season, tmdbId, type]);
+  useEffect(() => {
+    setIsLoading(true);
+  }, [src]);
 
   const isPremiumLocked = type === 'tv' && episode > 20;
 
@@ -45,8 +54,52 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
     );
   }
 
+  if (!hasValidTmdbId) {
+    return (
+      <section className="overflow-hidden rounded-2xl border-2 border-[#047857] bg-black shadow-[0_0_35px_rgba(212,175,55,0.35)]">
+        <div className="grid aspect-video place-items-center px-6 text-center text-cream">
+          <p className="text-base text-gold md:text-lg">
+            Video not found, please try another server.
+            <br />
+            الفيديو غير موجود، يرجى تجربة سيرفر آخر.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="overflow-hidden rounded-2xl border-2 border-[#047857] bg-black shadow-[0_0_35px_rgba(212,175,55,0.35)]">
+    <section className="mx-auto w-full overflow-hidden rounded-2xl border-2 border-[#047857] bg-black shadow-[0_0_35px_rgba(212,175,55,0.35)]">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#047857]/40 bg-zinc-950/80 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => {
+            setServer(1);
+            setIsLoading(true);
+            setOverlayActive(true);
+          }}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+            server === 1 ? 'border-[#D4AF37] bg-[#D4AF37] text-black' : 'border-[#047857] text-[#D4AF37] hover:border-[#D4AF37]'
+          }`}
+        >
+          Server 1
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setServer(2);
+            setIsLoading(true);
+            setOverlayActive(true);
+          }}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+            server === 2 ? 'border-[#D4AF37] bg-[#D4AF37] text-black' : 'border-[#047857] text-[#D4AF37] hover:border-[#D4AF37]'
+          }`}
+        >
+          Server 2
+        </button>
+        <span className="rounded-full border border-[#D4AF37]/70 bg-[#D4AF37]/20 px-3 py-1 text-xs font-semibold text-[#D4AF37]">Server Status: Online</span>
+      </div>
+
       <div className="relative aspect-video w-full">
         {isLoading && (
           <div className="absolute inset-0 z-20 grid place-items-center bg-black/80">
@@ -67,10 +120,9 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
           src={src}
           title={title ?? t.streamPlayerTitle}
           className="h-full w-full"
-          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
-          sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-forms"
-          referrerPolicy="strict-origin-when-cross-origin"
+          referrerPolicy="origin"
           onLoad={() => setIsLoading(false)}
         />
       </div>
