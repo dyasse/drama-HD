@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Locale } from '../../../../../i18n/config';
@@ -23,6 +24,48 @@ function getNextEpisodeHref({
 }) {
   if (episode >= maxEpisode) return null;
   return `/${locale}/watch/${type}/${id}?season=${season}&episode=${episode + 1}`;
+}
+
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; type: string; id: string }>;
+}): Promise<Metadata> {
+  const { locale, type, id } = await params;
+  const sourceId = Number(id);
+
+  if (Number.isNaN(sourceId)) {
+    return {
+      title: 'Watch | Drama HD',
+      description: 'Watch the latest movies and series on Drama HD.',
+    };
+  }
+
+  if (type === 'movie' || type === 'tv') {
+    const show = await getTmdbDetail(type, sourceId, locale as Locale);
+    if (show) {
+      return {
+        title: `Watch ${show.title} | Drama HD`,
+        description: show.description,
+      };
+    }
+  }
+
+  if (type === 'anime') {
+    const anime = await getAnimeDetail(sourceId);
+    if (anime) {
+      return {
+        title: `Watch ${anime.title} | Drama HD`,
+        description: anime.description,
+      };
+    }
+  }
+
+  return {
+    title: 'Watch | Drama HD',
+    description: 'Watch the latest movies and series on Drama HD.',
+  };
 }
 
 export default async function WatchPage({

@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import type { Locale } from '../../i18n/config';
 import { uiCopy } from '../../lib/data/i18n';
@@ -17,32 +16,43 @@ type VideoPlayerProps = {
   nextEpisodeHref?: string;
 };
 
+type ServerId = 1 | 2;
+
 type ServerOption = {
-  id: 1 | 2 | 3;
+  id: ServerId;
   label: string;
-  badge: string;
 };
 
 const serverOptions: ServerOption[] = [
-  { id: 1, label: 'Server 1', badge: 'Pro' },
-  { id: 2, label: 'Server 2', badge: 'VIP' },
-  { id: 3, label: 'Server 3', badge: 'Direct' },
+  { id: 1, label: 'Server 1' },
+  { id: 2, label: 'Server 2' },
 ];
 
 export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, title, nextEpisodeHref }: VideoPlayerProps) {
   const t = uiCopy[locale];
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [activeServer, setActiveServer] = useState<1 | 2 | 3>(1);
+  const [activeServer, setActiveServer] = useState<ServerId>(1);
   const [isLoading, setIsLoading] = useState(true);
   const [clientReady, setClientReady] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+  const [overlayVisible, setOverlayVisible] = useState(true);
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
 
   const hasValidTmdbId = Number.isFinite(tmdbId) && tmdbId > 0;
   const isArabic = locale === 'ar';
   const normalizedType = type === 'movie' ? 'movie' : 'tv';
   const normalizedSeason = Math.max(1, season);
   const normalizedEpisode = Math.max(1, episode);
+  const isPremiumLocked = type === 'tv' && normalizedEpisode > 20;
+
+  const src = useMemo(() => {
+    if (activeServer === 1) {
+      const base = `https://vidsrc.cc/v2/embed/${normalizedType}/${tmdbId}?autoPlay=false`;
+      return normalizedType === 'tv' ? `${base}&s=${normalizedSeason}&e=${normalizedEpisode}` : base;
+    }
+
+    const base = `https://vidsrc.me/embed/${normalizedType}?tmdb=${tmdbId}`;
+    return normalizedType === 'tv' ? `${base}&s=${normalizedSeason}&e=${normalizedEpisode}` : base;
+  }, [activeServer, normalizedEpisode, normalizedSeason, normalizedType, tmdbId]);
 
   useEffect(() => {
     setClientReady(true);
@@ -50,26 +60,18 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
 
   useEffect(() => {
     setIsLoading(true);
-  }, [activeServer, normalizedSeason, normalizedEpisode, tmdbId]);
+    setOverlayVisible(true);
+    if (!clientReady || isPremiumLocked || !hasValidTmdbId) {
+      setIframeSrc(null);
+      return;
+    }
+
+    setIframeSrc(src);
+  }, [clientReady, hasValidTmdbId, isPremiumLocked, src]);
 
   useEffect(() => {
-    setOpenModal(type === 'tv' && normalizedEpisode > 20);
-  }, [type, normalizedEpisode]);
-
-  const src = useMemo(() => {
-    if (activeServer === 1) {
-      return `https://vidsrc.xyz/embed/${normalizedType}?tmdb=${tmdbId}&s=${normalizedSeason}&e=${normalizedEpisode}`;
-    }
-
-    if (activeServer === 2) {
-      return `https://vidsrc.pm/api/track/${normalizedType}?${normalizedType}=${tmdbId}&s=${normalizedSeason}&e=${normalizedEpisode}`;
-    }
-
-    return `https://embed.su/embed/${normalizedType}/${tmdbId}/${normalizedSeason}/${normalizedEpisode}`;
-  }, [activeServer, normalizedEpisode, normalizedSeason, normalizedType, tmdbId]);
-
-  const frameKey = `${activeServer}-${tmdbId}-${normalizedSeason}-${normalizedEpisode}-${pathname}-${searchParams.toString()}`;
-  const isPremiumLocked = type === 'tv' && normalizedEpisode > 20;
+    setOpenModal(isPremiumLocked);
+  }, [isPremiumLocked]);
 
   if (!hasValidTmdbId) {
     return (
@@ -87,26 +89,6 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
 
   return (
     <section className="mx-auto w-full overflow-hidden rounded-none border-y-2 border-[#047857] bg-black text-[#FFFDD0] shadow-[0_0_35px_rgba(212,175,55,0.35)] sm:rounded-2xl sm:border-2" dir={isArabic ? 'rtl' : 'ltr'}>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#047857]/40 bg-black/80 px-3 py-3 sm:px-4">
-        <div className="flex items-center gap-2">
-          {serverOptions.map((server) => (
-            <button
-              key={server.id}
-              type="button"
-              onClick={() => setActiveServer(server.id)}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition sm:text-sm ${
-                activeServer === server.id
-                  ? 'border-[#047857] bg-[#047857] text-[#FFFDD0]'
-                  : 'border-[#047857]/70 bg-transparent text-[#047857] hover:border-[#D4AF37] hover:text-[#D4AF37]'
-              }`}
-            >
-              {server.label} <span className="text-[#D4AF37]">{server.badge}</span>
-            </button>
-          ))}
-        </div>
-        <span className="rounded-full border border-[#D4AF37]/80 bg-[#D4AF37]/15 px-3 py-1 text-xs font-semibold text-[#D4AF37]">Server Switcher</span>
-      </div>
-
       <div className="relative aspect-video w-full">
         {(!clientReady || isLoading) && (
           <div className="absolute inset-0 z-20 overflow-hidden bg-gradient-to-br from-[#047857]/35 via-black to-[#D4AF37]/20">
@@ -116,18 +98,27 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
           </div>
         )}
 
-        {!isPremiumLocked && clientReady && (
-          <div className="aspect-video">
+        {!isPremiumLocked && clientReady && iframeSrc && (
+          <div className="relative aspect-video">
             <iframe
-              key={frameKey}
-              src={src}
+              key={`${tmdbId}-${normalizedSeason}-${normalizedEpisode}-${activeServer}`}
+              src={iframeSrc}
               title={title ?? t.streamPlayerTitle}
               className="h-full w-full"
               allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
               allowFullScreen
               referrerPolicy="no-referrer"
+              sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"
               onLoad={() => setIsLoading(false)}
             />
+            {overlayVisible && (
+              <button
+                type="button"
+                aria-label="Activate player"
+                onClick={() => setOverlayVisible(false)}
+                className="absolute inset-0 z-30 cursor-pointer bg-transparent"
+              />
+            )}
           </div>
         )}
 
@@ -145,13 +136,31 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
         )}
       </div>
 
-      {nextEpisodeHref && !isPremiumLocked && type === 'tv' && (
-        <div className="border-t border-[#047857]/40 bg-black/80 px-4 py-3 text-center sm:text-right">
-          <Link href={nextEpisodeHref} className="inline-flex rounded-full border border-[#047857] bg-[#047857] px-5 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]">
+      <div className="flex flex-wrap items-center gap-3 border-t border-[#047857]/40 bg-black/80 px-3 py-3 sm:px-4">
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">Server Switcher</span>
+        <div className="flex items-center gap-2">
+          {serverOptions.map((server) => (
+            <button
+              key={server.id}
+              type="button"
+              onClick={() => setActiveServer(server.id)}
+              className={`rounded-full border px-4 py-2 text-xs font-bold transition sm:text-sm ${
+                activeServer === server.id
+                  ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
+                  : 'border-[#D4AF37]/70 bg-[#D4AF37]/15 text-[#D4AF37] hover:border-[#047857] hover:text-[#047857]'
+              }`}
+            >
+              {server.label}
+            </button>
+          ))}
+        </div>
+
+        {nextEpisodeHref && !isPremiumLocked && type === 'tv' && (
+          <Link href={nextEpisodeHref} className="ml-auto inline-flex rounded-full border border-[#047857] bg-[#047857] px-5 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]">
             Next Episode
           </Link>
-        </div>
-      )}
+        )}
+      </div>
 
       <PremiumModal open={openModal} onClose={() => setOpenModal(false)} title={t.unlock} subtitle={t.oneTime} />
     </section>
