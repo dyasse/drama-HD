@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Lock } from 'lucide-react';
 import type { Locale } from '../../../../../i18n/config';
 import { StreamPlayer } from '../../../../../components/player/stream-player';
+import { WatchAutofocus } from '../../../../../components/player/watch-autofocus';
 import { PosterImage } from '../../../../../components/ui/poster-image';
 import { uiCopy } from '../../../../../lib/data/i18n';
 import { getAnimeDetail, getAnimeEpisodes, getSimilarTmdb, getTmdbDetail, getTvSeasonEpisodes, mapAnimeToTmdbTvId } from '../../../../../lib/data/media';
@@ -94,7 +96,16 @@ export default async function WatchPage({
     if (!show) notFound();
 
     return (
-      <main className="space-y-4 px-0 sm:px-2 md:px-0">
+      <main className="space-y-4 bg-[#050505] px-0 pb-6 text-[#FFFDD0]">
+        <WatchAutofocus />
+        <div className="mx-auto w-full max-w-7xl px-3 sm:px-4">
+          <Link
+            href={`/${locale}`}
+            className="inline-flex items-center rounded-full border border-[#047857] bg-[#047857] px-4 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]"
+          >
+            ← Back to Home
+          </Link>
+        </div>
         <StreamPlayer tmdbId={sourceId} type="movie" locale={locale as Locale} title={show.title} />
         <div dir={isArabic ? 'rtl' : 'ltr'} className={isArabic ? 'px-3 text-right sm:px-0' : 'px-3 text-left sm:px-0'}>
           <h1 className="text-2xl font-bold">{show.title}</h1>
@@ -136,7 +147,16 @@ export default async function WatchPage({
     });
 
     return (
-      <main className="space-y-4 px-0 sm:px-2 md:px-0">
+      <main className="space-y-4 bg-[#050505] px-0 pb-6 text-[#FFFDD0]">
+        <WatchAutofocus />
+        <div className="mx-auto w-full max-w-7xl px-3 sm:px-4">
+          <Link
+            href={`/${locale}`}
+            className="inline-flex items-center rounded-full border border-[#047857] bg-[#047857] px-4 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]"
+          >
+            ← Back to Home
+          </Link>
+        </div>
         <StreamPlayer
           tmdbId={sourceId}
           type="tv"
@@ -166,23 +186,26 @@ export default async function WatchPage({
             ))}
           </div>
 
-          <div className="max-h-72 overflow-y-auto rounded-xl border border-[#047857]/40 bg-black/40 p-2">
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10">
+          <p className="mb-2 text-sm font-semibold text-[#047857]">Watching Now · {t.episode} {selectedEpisode}</p>
+          <div className="overflow-x-auto rounded-xl border border-[#047857]/40 bg-black/40 p-2">
+            <div className="flex min-w-max gap-2">
             {seasonData.episodes.map((episodeItem) => {
               const episodeNumber = episodeItem.episodeNumber;
               const isActive = selectedEpisode === episodeNumber;
+              const isPremiumEpisode = episodeNumber > 20;
               const href = `/${locale}/watch/tv/${sourceId}?season=${selectedSeason}&episode=${episodeNumber}`;
               return (
                 <Link
                   key={episodeNumber}
                   href={href}
-                  className={`rounded-md border px-3 py-2 text-center text-sm font-medium transition ${
+                  className={`inline-flex min-w-[112px] items-center justify-center gap-1 rounded-md border px-3 py-2 text-center text-sm font-medium transition ${
                     isActive
                       ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
                       : 'border-[#047857]/60 bg-[#047857]/15 text-[#FFFDD0] hover:border-[#D4AF37] hover:text-[#D4AF37]'
                   }`}
                 >
                   {t.episode} {episodeNumber}
+                  {isPremiumEpisode ? <Lock size={12} className="text-[#D4AF37]" /> : null}
                 </Link>
               );
             })}
@@ -222,7 +245,16 @@ export default async function WatchPage({
   });
 
   return (
-    <main className="space-y-4 px-0 sm:px-2 md:px-0">
+    <main className="space-y-4 bg-[#050505] px-0 pb-6 text-[#FFFDD0]">
+      <WatchAutofocus />
+      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4">
+        <Link
+          href={`/${locale}`}
+          className="inline-flex items-center rounded-full border border-[#047857] bg-[#047857] px-4 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]"
+        >
+          ← Back to Home
+        </Link>
+      </div>
       <StreamPlayer tmdbId={mappedTmdbId} type="tv" season={1} episode={selectedEpisode} locale={locale as Locale} title={anime.title} nextEpisodeHref={nextEpisodeHref ?? undefined} />
       <div dir={isArabic ? 'rtl' : 'ltr'} className={isArabic ? 'px-3 text-right sm:px-0' : 'px-3 text-left sm:px-0'}>
         <h1 className="text-2xl font-bold">{anime.title}</h1>
@@ -230,23 +262,26 @@ export default async function WatchPage({
       </div>
       <section dir={isArabic ? 'rtl' : 'ltr'} className="mx-auto w-full max-w-5xl px-3 sm:px-0">
         <p className="mb-2 text-sm font-semibold text-[#FFFDD0]">{t.episodeSelector}</p>
-        <div className="max-h-72 overflow-y-auto rounded-xl border border-[#047857]/40 bg-black/40 p-2">
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10">
+        <p className="mb-2 text-sm font-semibold text-[#047857]">Watching Now · {t.episode} {selectedEpisode}</p>
+        <div className="overflow-x-auto rounded-xl border border-[#047857]/40 bg-black/40 p-2">
+          <div className="flex min-w-max gap-2">
           {episodes.map((episodeItem) => {
             const episodeNumber = episodeItem.episodeNumber;
             const isActive = selectedEpisode === episodeNumber;
+            const isPremiumEpisode = episodeNumber > 20;
             const href = `/${locale}/watch/anime/${sourceId}?season=1&episode=${episodeNumber}`;
             return (
               <Link
                 key={episodeNumber}
                 href={href}
-                className={`rounded-md border px-3 py-2 text-center text-sm font-medium transition ${
+                className={`inline-flex min-w-[112px] items-center justify-center gap-1 rounded-md border px-3 py-2 text-center text-sm font-medium transition ${
                   isActive
                     ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
                     : 'border-[#047857]/60 bg-[#047857]/15 text-[#FFFDD0] hover:border-[#D4AF37] hover:text-[#D4AF37]'
                 }`}
               >
                 {t.episode} {episodeNumber}
+                {isPremiumEpisode ? <Lock size={12} className="text-[#D4AF37]" /> : null}
               </Link>
             );
           })}
