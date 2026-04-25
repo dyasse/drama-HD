@@ -5,11 +5,17 @@ import { uiCopy } from '../../lib/data/i18n';
 import { LocaleSwitcher } from '../locale-switcher';
 import { ThemeToggle } from '../theme-toggle';
 
-export function AppHeader({ locale }: { locale: Locale }) {
+export function AppHeader({ locale, cinemaMode = false }: { locale: Locale; cinemaMode?: boolean }) {
   const t = uiCopy[locale];
 
   return (
-    <header className="sticky top-0 z-40 mb-6 border-b border-emerald/10 bg-cream/90 backdrop-blur dark:bg-matte/90">
+    <header
+      className={
+        cinemaMode
+          ? 'absolute inset-x-0 top-0 z-40 border-b border-[#047857]/20 bg-black/65 backdrop-blur'
+          : 'sticky top-0 z-40 mb-6 border-b border-emerald/10 bg-cream/90 backdrop-blur dark:bg-matte/90'
+      }
+    >
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3">
         <Link href={`/${locale}`} className="flex items-center gap-2 text-lg font-semibold text-emerald">
           <Crown className="text-gold" size={18} /> Drama HD

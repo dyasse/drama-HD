@@ -16,26 +16,14 @@ type VideoPlayerProps = {
   nextEpisodeHref?: string;
 };
 
-type ServerId = 1 | 2;
-
-type ServerOption = {
-  id: ServerId;
-  label: string;
-};
-
-const serverOptions: ServerOption[] = [
-  { id: 1, label: 'Server 1' },
-  { id: 2, label: 'Server 2' },
-];
-
 export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, title, nextEpisodeHref }: VideoPlayerProps) {
   const t = uiCopy[locale];
-  const [activeServer, setActiveServer] = useState<ServerId>(1);
   const [isLoading, setIsLoading] = useState(true);
   const [clientReady, setClientReady] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [overlayVisible, setOverlayVisible] = useState(true);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   const hasValidTmdbId = Number.isFinite(tmdbId) && tmdbId > 0;
   const isArabic = locale === 'ar';
@@ -45,14 +33,9 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
   const isPremiumLocked = type === 'tv' && normalizedEpisode > 20;
 
   const src = useMemo(() => {
-    if (activeServer === 1) {
-      const base = `https://vidsrc.cc/v2/embed/${normalizedType}/${tmdbId}?autoPlay=false`;
-      return normalizedType === 'tv' ? `${base}&s=${normalizedSeason}&e=${normalizedEpisode}` : base;
-    }
-
-    const base = `https://vidsrc.me/embed/${normalizedType}?tmdb=${tmdbId}`;
+    const base = `https://vidsrc.xyz/embed/${normalizedType}?tmdb=${tmdbId}`;
     return normalizedType === 'tv' ? `${base}&s=${normalizedSeason}&e=${normalizedEpisode}` : base;
-  }, [activeServer, normalizedEpisode, normalizedSeason, normalizedType, tmdbId]);
+  }, [normalizedEpisode, normalizedSeason, normalizedType, tmdbId]);
 
   useEffect(() => {
     setClientReady(true);
@@ -67,7 +50,7 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
     }
 
     setIframeSrc(src);
-  }, [clientReady, hasValidTmdbId, isPremiumLocked, src]);
+  }, [clientReady, hasValidTmdbId, isPremiumLocked, src, reloadNonce]);
 
   useEffect(() => {
     setOpenModal(isPremiumLocked);
@@ -88,8 +71,8 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
   }
 
   return (
-    <section className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-[#047857] bg-black text-[#FFFDD0] shadow-[0_0_0_1px_rgba(4,120,87,0.4),0_0_30px_rgba(212,175,55,0.28)]" dir={isArabic ? 'rtl' : 'ltr'}>
-      <div className="relative aspect-video w-full">
+    <section className="w-full overflow-hidden border-y border-[#047857] bg-black text-[#FFFDD0] md:mx-auto md:max-w-4xl md:rounded-2xl md:border md:shadow-[0_0_0_1px_rgba(4,120,87,0.4),0_0_45px_rgba(212,175,55,0.35)]" dir={isArabic ? 'rtl' : 'ltr'}>
+      <div className="relative h-[300px] w-full md:h-[500px]">
         {(!clientReady || isLoading) && (
           <div className="absolute inset-0 z-20 overflow-hidden bg-gradient-to-br from-[#047857]/35 via-black to-[#D4AF37]/20">
             <div className="absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_top,_rgba(212,175,55,0.35),transparent_60%)]" />
@@ -101,7 +84,7 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
         {!isPremiumLocked && clientReady && iframeSrc && (
           <div className="relative aspect-video">
             <iframe
-              key={`${tmdbId}-${normalizedSeason}-${normalizedEpisode}-${activeServer}`}
+              key={`${tmdbId}-${reloadNonce}`}
               src={iframeSrc}
               title={title ?? t.streamPlayerTitle}
               className="h-full w-full"
@@ -137,23 +120,13 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
       </div>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-[#047857]/40 bg-black/80 px-3 py-3 sm:px-4">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">Switch Server</span>
-        <div className="flex items-center gap-2">
-          {serverOptions.map((server) => (
-            <button
-              key={server.id}
-              type="button"
-              onClick={() => setActiveServer(server.id)}
-              className={`rounded-full border px-4 py-2 text-xs font-bold transition sm:text-sm ${
-                activeServer === server.id
-                  ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
-                  : 'border-[#D4AF37]/70 bg-[#D4AF37]/15 text-[#D4AF37] hover:border-[#047857] hover:text-[#047857]'
-              }`}
-            >
-              {server.label}
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          onClick={() => setReloadNonce((current) => current + 1)}
+          className="rounded-full border border-[#D4AF37] bg-[#D4AF37] px-4 py-2 text-xs font-bold text-black transition hover:bg-[#d9bc57] sm:text-sm"
+        >
+          Reload Player
+        </button>
 
         {nextEpisodeHref && !isPremiumLocked && type === 'tv' && (
           <Link href={nextEpisodeHref} className="ml-auto inline-flex rounded-full border border-[#047857] bg-[#047857] px-5 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]">
