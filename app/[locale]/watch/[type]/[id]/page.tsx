@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import type { Locale } from '../../../../../i18n/config';
-import { VideoPlayerPanel } from '../../../../../components/player/video-player-panel';
+import { StreamPlayer } from '../../../../../components/player/stream-player';
 import { getAnimeDetail, getAnimeEpisodes, getTmdbDetail, getTvSeasonEpisodes, mapAnimeToTmdbTvId } from '../../../../../lib/data/media';
 
 export default async function WatchPage({
@@ -16,6 +17,7 @@ export default async function WatchPage({
   const sourceId = Number(id);
   const selectedSeason = Number(seasonRaw ?? '1');
   const selectedEpisode = Number(episodeRaw ?? '1');
+  const isArabic = locale === 'ar';
 
   if (!mediaType || [sourceId, selectedSeason, selectedEpisode].some(Number.isNaN)) notFound();
 
@@ -25,11 +27,11 @@ export default async function WatchPage({
 
     return (
       <main className="space-y-4">
-        <div>
+        <StreamPlayer tmdbId={sourceId} type="movie" />
+        <div dir={isArabic ? 'rtl' : 'ltr'} className={isArabic ? 'text-right' : 'text-left'}>
           <h1 className="text-2xl font-bold">{show.title}</h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-300">{show.description}</p>
         </div>
-        <VideoPlayerPanel title={show.title} locale={locale as Locale} mediaType="movie" tmdbId={sourceId} />
       </main>
     );
   }
@@ -43,21 +45,35 @@ export default async function WatchPage({
 
     return (
       <main className="space-y-4">
-        <div>
+        <StreamPlayer tmdbId={sourceId} type="tv" season={selectedSeason} episode={selectedEpisode} />
+        <div dir={isArabic ? 'rtl' : 'ltr'} className={isArabic ? 'text-right' : 'text-left'}>
           <h1 className="text-2xl font-bold">{show.title}</h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-300">{seasonData.seasonTitle}</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">{show.description}</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">{seasonData.seasonTitle}</p>
         </div>
-        <VideoPlayerPanel
-          title={show.title}
-          locale={locale as Locale}
-          mediaType="tv"
-          tmdbId={sourceId}
-          season={selectedSeason}
-          initialEpisode={selectedEpisode}
-          episodes={seasonData.episodes}
-          seasons={show.seasons ?? []}
-          routeConfig={{ locale: locale as Locale, type: 'tv', id: sourceId }}
-        />
+        <section>
+          <p className="mb-2 text-sm font-semibold">Episode Selector</p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10">
+            {seasonData.episodes.map((episodeItem) => {
+              const episodeNumber = episodeItem.episodeNumber;
+              const isActive = selectedEpisode === episodeNumber;
+              const href = `/${locale}/watch/tv/${sourceId}?season=${selectedSeason}&episode=${episodeNumber}`;
+              return (
+                <Link
+                  key={episodeNumber}
+                  href={href}
+                  className={`rounded-md border px-3 py-2 text-center text-sm font-medium transition ${
+                    isActive
+                      ? 'border-emerald bg-emerald text-white'
+                      : 'border-emerald/50 bg-emerald/10 text-emerald hover:bg-emerald hover:text-white'
+                  }`}
+                >
+                  E{episodeNumber}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
       </main>
     );
   }
@@ -69,21 +85,34 @@ export default async function WatchPage({
 
   return (
     <main className="space-y-4">
-      <div>
+      <StreamPlayer tmdbId={mappedTmdbId} type="tv" season={1} episode={selectedEpisode} />
+      <div dir={isArabic ? 'rtl' : 'ltr'} className={isArabic ? 'text-right' : 'text-left'}>
         <h1 className="text-2xl font-bold">{anime.title}</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">Anime episode streaming with dynamic episode selector.</p>
       </div>
-      <VideoPlayerPanel
-        title={anime.title}
-        locale={locale as Locale}
-        mediaType="anime"
-        tmdbId={mappedTmdbId}
-        season={1}
-        initialEpisode={selectedEpisode}
-        episodes={episodes}
-        seasons={[{ seasonNumber: 1, episodeCount: episodes.length, name: 'Season 1' }]}
-        routeConfig={{ locale: locale as Locale, type: 'anime', id: sourceId }}
-      />
+      <section>
+        <p className="mb-2 text-sm font-semibold">Episode Selector</p>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10">
+          {episodes.map((episodeItem) => {
+            const episodeNumber = episodeItem.episodeNumber;
+            const isActive = selectedEpisode === episodeNumber;
+            const href = `/${locale}/watch/anime/${sourceId}?season=1&episode=${episodeNumber}`;
+            return (
+              <Link
+                key={episodeNumber}
+                href={href}
+                className={`rounded-md border px-3 py-2 text-center text-sm font-medium transition ${
+                  isActive
+                    ? 'border-emerald bg-emerald text-white'
+                    : 'border-emerald/50 bg-emerald/10 text-emerald hover:bg-emerald hover:text-white'
+                }`}
+              >
+                E{episodeNumber}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
     </main>
   );
 }
