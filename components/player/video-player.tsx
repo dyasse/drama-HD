@@ -24,11 +24,11 @@ type ProviderSource = {
 };
 
 const PROVIDER_TEMPLATES = {
-  source1: 'https://embed.su/embed/[type]/{id}/{s}/{e}',
-  source2: 'https://vidsrc.cc/v2/embed/[type]/{id}',
-  source3: 'https://vidsrc.pro/embed/[type]/{id}',
-  source4: 'https://vidsrc.in/embed/[type]/{id}',
-  source5: 'https://vidsrc.xyz/embed/[type]?tmdb={id}',
+  source1: 'https://vidsrc.to/embed/{type}/{id}',
+  source2: 'https://embed.su/embed/[type]/{id}/{s}/{e}',
+  source3: 'https://vidsrc.cc/v2/embed/{type}/{id}',
+  source4: 'https://vidsrc.pro/embed/{type}/{id}',
+  source5: 'https://vidsrc.in/embed/{type}/{id}',
   source6: 'https://multiembed.mov/directstream.php?video_id={id}&tmdb=1',
 } as const;
 
@@ -45,11 +45,28 @@ function buildServerUrl(template: string, params: { type: 'movie' | 'tv'; id: nu
     .replaceAll('{e}', safeEpisode);
 }
 
+function buildTypePathProviderUrl(
+  template: string,
+  params: { type: 'movie' | 'tv'; id: number; season: number; episode: number },
+) {
+  const suffix = params.type === 'tv' ? `/${params.season}/${params.episode}` : '';
+  return buildServerUrl(template, params).replaceAll('{type}', params.type).concat(suffix);
+}
+
+function buildVidsrcXyzUrl(params: { type: 'movie' | 'tv'; id: number; season: number; episode: number }) {
+  const query = new URLSearchParams({ tmdb: String(params.id) });
+  if (params.type === 'tv') {
+    query.set('season', String(params.season));
+    query.set('episode', String(params.episode));
+  }
+  return `https://vidsrc.xyz/embed/${params.type}?${query.toString()}`;
+}
+
 const PROVIDER_SOURCES: ProviderSource[] = [
   {
     id: 'source-1',
     label: 'Source 1',
-    buildUrl: (params) => buildServerUrl(PROVIDER_TEMPLATES.source1, params),
+    buildUrl: (params) => buildTypePathProviderUrl(PROVIDER_TEMPLATES.source1, params),
   },
   {
     id: 'source-2',
@@ -59,21 +76,26 @@ const PROVIDER_SOURCES: ProviderSource[] = [
   {
     id: 'source-3',
     label: 'Source 3',
-    buildUrl: (params) => buildServerUrl(PROVIDER_TEMPLATES.source3, params),
+    buildUrl: (params) => buildTypePathProviderUrl(PROVIDER_TEMPLATES.source3, params),
   },
   {
     id: 'source-4',
     label: 'Source 4',
-    buildUrl: (params) => buildServerUrl(PROVIDER_TEMPLATES.source4, params),
+    buildUrl: (params) => buildTypePathProviderUrl(PROVIDER_TEMPLATES.source4, params),
   },
   {
     id: 'source-5',
     label: 'Source 5',
-    buildUrl: (params) => buildServerUrl(PROVIDER_TEMPLATES.source5, params),
+    buildUrl: (params) => buildTypePathProviderUrl(PROVIDER_TEMPLATES.source5, params),
   },
   {
     id: 'source-6',
     label: 'Source 6',
+    buildUrl: (params) => buildVidsrcXyzUrl(params),
+  },
+  {
+    id: 'source-7',
+    label: 'Source 7',
     buildUrl: (params) => buildServerUrl(PROVIDER_TEMPLATES.source6, params),
   },
 ];
