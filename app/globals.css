@@ -13,3 +13,9 @@
 body {
   @apply bg-cream text-zinc-900 dark:bg-matte dark:text-zinc-100;
 }
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}

@@ -8,8 +8,9 @@ type StreamPlayerProps = {
   episode?: number;
   locale: Locale;
   title?: string;
+  nextEpisodeHref?: string;
 };
 
-export function StreamPlayer({ tmdbId, type, season = 1, episode = 1, locale, title }: StreamPlayerProps) {
-  return <VideoPlayer tmdbId={tmdbId} type={type} season={season} episode={episode} locale={locale} title={title} />;
+export function StreamPlayer({ tmdbId, type, season = 1, episode = 1, locale, title, nextEpisodeHref }: StreamPlayerProps) {
+  return <VideoPlayer tmdbId={tmdbId} type={type} season={season} episode={episode} locale={locale} title={title} nextEpisodeHref={nextEpisodeHref} />;
 }
