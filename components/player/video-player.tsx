@@ -1,11 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Locale } from '../../i18n/config';
-import { uiCopy } from '../../lib/data/i18n';
-import { getNextEnabledProvider, getProviderDefinitions } from '../../lib/player/providers';
-import type { ProviderDef } from '../../lib/player/types';
 import { PremiumModal } from './premium-modal';
 import { StreamContainer } from './stream-container';
 
@@ -21,281 +18,155 @@ type VideoPlayerProps = {
   maxEpisode?: number;
 };
 
-type ProviderWithUrl = ProviderDef & { url: string };
+type EliteServer = {
+  id: string;
+  label: string;
+  buildUrl: (params: { type: 'movie' | 'tv'; id: number; season: number; episode: number }) => string;
+};
 
-const PLAYER_TIMEOUT_MS = 12_000;
-const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@dramahd.example';
+const ELITE_SERVERS: EliteServer[] = [
+  {
+    id: 'server-1',
+    label: 'Server 1 (Pro)',
+    buildUrl: ({ type, id, season, episode }) =>
+      type === 'tv' ? `https://vidsrc.pro/embed/tv/${id}/${season}/${episode}` : `https://vidsrc.pro/embed/movie/${id}`,
+  },
+  {
+    id: 'server-2',
+    label: 'Server 2 (VIP)',
+    buildUrl: ({ type, id, season, episode }) =>
+      type === 'tv' ? `https://vidsrc.in/embed/tv/${id}/${season}/${episode}` : `https://vidsrc.in/embed/movie/${id}`,
+  },
+  {
+    id: 'server-3',
+    label: 'Server 3 (Stable)',
+    buildUrl: ({ type, id, season, episode }) =>
+      type === 'tv' ? `https://embed.su/embed/tv/${id}/${season}/${episode}` : `https://embed.su/embed/movie/${id}`,
+  },
+  {
+    id: 'server-4',
+    label: 'Server 4 (Alternative)',
+    buildUrl: ({ type, id, season, episode }) =>
+      type === 'tv'
+        ? `https://vidsrc.xyz/embed/tv?tmdb=${id}&s=${season}&e=${episode}`
+        : `https://vidsrc.xyz/embed/movie?tmdb=${id}`,
+  },
+  {
+    id: 'server-5',
+    label: 'Server 5 (Backup)',
+    buildUrl: ({ type, id, season, episode }) =>
+      type === 'tv'
+        ? `https://vidsrc.me/embed/tv?tmdb=${id}&s=${season}&e=${episode}`
+        : `https://vidsrc.me/embed/movie?tmdb=${id}`,
+  },
+  {
+    id: 'server-6',
+    label: 'Server 6 (Global)',
+    buildUrl: ({ id, season, episode }) => `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
+  },
+];
 
-export function VideoPlayer({
-  tmdbId,
-  type,
-  season = 1,
-  episode = 1,
-  locale,
-  title,
-  nextEpisodeHref,
-  previousEpisodeHref,
-  maxEpisode,
-}: VideoPlayerProps) {
-  const t = uiCopy[locale];
-  const providers = useMemo(() => getProviderDefinitions(), []);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isMounted, setIsMounted] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
-  const [overlayVisible, setOverlayVisible] = useState(true);
-  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
-  const [reloadNonce, setReloadNonce] = useState(0);
-  const [activeServerIndex, setActiveServerIndex] = useState(0);
-  const [autoFailover, setAutoFailover] = useState(true);
-  const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const hasValidTmdbId = Number.isFinite(tmdbId) && tmdbId > 0;
-  const isArabic = locale === 'ar';
-  const normalizedType = type === 'movie' ? 'movie' : 'tv';
+export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, title, nextEpisodeHref, previousEpisodeHref, maxEpisode }: VideoPlayerProps) {
   const normalizedSeason = Math.max(1, season);
   const normalizedEpisode = Math.max(1, episode);
-  const isPremiumLocked = type === 'tv' && normalizedEpisode > 20;
-  const episodeKey = `${normalizedType}-${tmdbId}-${normalizedSeason}-${normalizedEpisode}`;
+  const isArabic = locale === 'ar';
 
-  const providerLinks = useMemo<ProviderWithUrl[]>(
-    () =>
-      [...providers]
-        .sort((a, b) => a.priority - b.priority)
-        .map((provider) => {
-          const url = provider.buildUrl({
-            type: normalizedType,
-            tmdbId,
-            season: normalizedSeason,
-            episode: normalizedEpisode,
-          });
-          const enabled = provider.enabled && Boolean(url) && url !== 'about:blank';
-          return { ...provider, enabled, url };
-        }),
-    [providers, normalizedEpisode, normalizedSeason, normalizedType, tmdbId],
+  const [selectedServer, setSelectedServer] = useState(ELITE_SERVERS[0].id);
+  const [overlayVisible, setOverlayVisible] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+
+  const isLocked = type === 'tv' && normalizedEpisode > 20;
+
+  const activeServer = ELITE_SERVERS.find((server) => server.id === selectedServer) ?? ELITE_SERVERS[0];
+  const iframeSrc = useMemo(
+    () => activeServer.buildUrl({ type, id: tmdbId, season: normalizedSeason, episode: normalizedEpisode }),
+    [activeServer, episode, normalizedEpisode, normalizedSeason, tmdbId, type],
   );
-
-  const enabledProviderCount = providerLinks.filter((provider) => provider.enabled).length;
-  const firstEnabledIndex = providerLinks.findIndex((provider) => provider.enabled);
-  const activeProvider = providerLinks[activeServerIndex] ?? providerLinks[firstEnabledIndex] ?? providerLinks[0];
-  const hasEnabledProviders = firstEnabledIndex >= 0;
-
-  const rotateToNextProvider = () => {
-    if (!autoFailover || enabledProviderCount <= 1) return;
-
-    setActiveServerIndex((current) => {
-      const nextIndex = getNextEnabledProvider(current, providerLinks);
-      if (nextIndex === current) return current;
-      setReloadNonce((nonce) => nonce + 1);
-      return nextIndex;
-    });
-  };
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted) return;
-
-    const defaultIndex = firstEnabledIndex >= 0 ? firstEnabledIndex : 0;
-
-    try {
-      const storedProvider = localStorage.getItem(`player-provider:${episodeKey}`);
-      if (!storedProvider) {
-        setActiveServerIndex(defaultIndex);
-        return;
-      }
-      const index = providerLinks.findIndex((provider) => provider.id === storedProvider && provider.enabled);
-      setActiveServerIndex(index >= 0 ? index : defaultIndex);
-    } catch {
-      setActiveServerIndex(defaultIndex);
-    }
-  }, [episodeKey, firstEnabledIndex, isMounted, providerLinks]);
-
-  useEffect(() => {
-    setReloadNonce(0);
-    setIsLoading(true);
-    setOverlayVisible(true);
-  }, [tmdbId, normalizedEpisode, normalizedSeason, normalizedType]);
-
-  useEffect(() => {
-    if (!isMounted || isPremiumLocked || !hasValidTmdbId || !activeProvider?.enabled || !hasEnabledProviders) {
-      setIframeSrc(null);
-      return;
-    }
-
-    setIframeSrc(activeProvider.url);
-    setIsLoading(true);
-    setOverlayVisible(true);
-
-    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-    loadTimeoutRef.current = setTimeout(() => {
-      rotateToNextProvider();
-    }, PLAYER_TIMEOUT_MS);
-
-    return () => {
-      if (loadTimeoutRef.current) {
-        clearTimeout(loadTimeoutRef.current);
-        loadTimeoutRef.current = null;
-      }
-    };
-  }, [activeProvider?.enabled, activeProvider?.url, hasEnabledProviders, hasValidTmdbId, isMounted, isPremiumLocked, reloadNonce]);
-
-  useEffect(() => {
-    setOpenModal(isPremiumLocked);
-  }, [isPremiumLocked]);
-
-  const handleIframeLoaded = () => {
-    setIsLoading(false);
-    if (loadTimeoutRef.current) {
-      clearTimeout(loadTimeoutRef.current);
-      loadTimeoutRef.current = null;
-    }
-
-    if (!isMounted || !activeProvider?.id) return;
-
-    try {
-      localStorage.setItem(`player-provider:${episodeKey}`, activeProvider.id);
-    } catch {
-      // ignore storage write errors
-    }
-  };
-
-  if (!hasValidTmdbId) {
-    return (
-      <section className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-[#047857] bg-[#050505] shadow-[0_0_0_1px_rgba(4,120,87,0.4),0_0_30px_rgba(212,175,55,0.28)]">
-        <div className="grid aspect-video place-items-center px-6 text-center text-[#FFFDD0]" dir={isArabic ? 'rtl' : 'ltr'}>
-          <p className="text-base text-[#D4AF37] md:text-lg">
-            Video not found, please try another server.
-            <br />
-            الفيديو غير موجود، يرجى تجربة سيرفر آخر.
-          </p>
-        </div>
-      </section>
-    );
-  }
 
   const hasPreviousEpisode = type === 'tv' && Boolean(previousEpisodeHref);
   const hasNextEpisode = type === 'tv' && Boolean(nextEpisodeHref) && (maxEpisode ? normalizedEpisode < maxEpisode : true);
 
   return (
     <section
-      className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-[#047857] bg-[#050505] text-[#FFFDD0] shadow-[0_0_0_1px_rgba(4,120,87,0.4),0_0_45px_rgba(212,175,55,0.35)]"
+      className="mx-auto w-full max-w-5xl rounded-2xl border border-[#047857] bg-[#050505] text-[#FFFDD0] shadow-[0_0_0_1px_rgba(4,120,87,0.4),0_0_45px_rgba(212,175,55,0.35)]"
       dir={isArabic ? 'rtl' : 'ltr'}
     >
-      <div className="relative aspect-video w-full">
-        {(!isMounted || isLoading) && (
-          <div className="absolute inset-0 z-20 overflow-hidden bg-gradient-to-br from-[#047857]/35 via-black to-[#D4AF37]/20">
-            <div className="absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_top,_rgba(212,175,55,0.35),transparent_60%)]" />
-            <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.7s_infinite] bg-gradient-to-r from-transparent via-[#FFFDD0]/15 to-transparent" />
-            <div className="absolute inset-x-6 bottom-6 h-3 rounded-full bg-[#047857]/40" />
-          </div>
-        )}
-
-        {!isPremiumLocked && isMounted && hasEnabledProviders && iframeSrc && (
-          <StreamContainer
-            iframeKey={`${activeProvider?.id ?? 'p1'}-${tmdbId}-${normalizedSeason}-${normalizedEpisode}-${reloadNonce}`}
-            src={iframeSrc}
-            title={title ?? t.streamPlayerTitle}
-            onLoad={handleIframeLoaded}
-            onError={rotateToNextProvider}
-            overlayVisible={overlayVisible}
-            onDismissOverlay={() => setOverlayVisible(false)}
-          />
-        )}
-
-        {!isPremiumLocked && isMounted && !hasEnabledProviders && (
-          <div className="grid h-full place-items-center bg-zinc-950/95 px-5 py-10 text-center">
-            <p className="max-w-lg text-sm text-[#FFFDD0]/85 sm:text-base">
-              No licensed streaming providers are currently configured for this title. Please contact support.
-            </p>
-          </div>
-        )}
-
-        {isPremiumLocked && (
-          <div className="grid h-full place-items-center bg-zinc-950/95 px-5 py-10 text-center">
-            <div className="space-y-3">
-              <p className="text-sm uppercase tracking-[0.2em] text-[#D4AF37]">{t.premiumSubscription}</p>
-              <h3 className="text-2xl font-bold text-[#D4AF37] sm:text-3xl">{t.unlockAllEpisodes}</h3>
-              <p className="text-[#FFFDD0]/90">{t.premiumDescription}</p>
-              <button type="button" onClick={() => setOpenModal(true)} className="rounded-full border border-[#D4AF37] bg-[#D4AF37] px-8 py-3 text-sm font-bold text-black md:text-base">
-                {t.unlockForSix}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-3 border-t border-[#047857]/40 bg-[#050505] px-3 py-3 sm:px-4">
-        {!isPremiumLocked && (
+      <div className="w-full max-w-5xl mx-auto aspect-video relative overflow-hidden rounded-t-2xl border-b border-[#047857]/40">
+        {!isLocked ? (
           <>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {providerLinks.map((provider, index) => {
-                const isActive = activeServerIndex === index;
-                return (
-                  <button
-                    key={provider.id}
-                    type="button"
-                    disabled={!provider.enabled}
-                    onClick={() => {
-                      if (!provider.enabled) return;
-                      setActiveServerIndex(index);
-                      setReloadNonce((current) => current + 1);
-                    }}
-                    className={`rounded-md border px-3 py-2 text-[11px] font-semibold transition sm:text-xs ${
-                      isActive
-                        ? 'border-[#D4AF37] bg-[#D4AF37] text-black shadow-[0_0_18px_rgba(212,175,55,0.42)]'
-                        : 'border-[#047857] bg-[#050505] text-[#FFFDD0] hover:border-[#D4AF37] hover:text-[#D4AF37]'
-                    } ${!provider.enabled ? 'cursor-not-allowed opacity-40' : ''}`}
-                  >
-                    {provider.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 text-xs">
+            {isLoading && <div className="absolute inset-0 z-10 animate-pulse bg-gradient-to-br from-[#047857]/20 via-black to-[#D4AF37]/20" />}
+            <StreamContainer
+              iframeKey={`${selectedServer}-${tmdbId}-${normalizedEpisode}`}
+              src={iframeSrc}
+              title={title ?? 'Stream Player'}
+              onLoad={() => setIsLoading(false)}
+              onError={() => setIsLoading(false)}
+              overlayVisible={overlayVisible}
+              onDismissOverlay={() => setOverlayVisible(false)}
+            />
+          </>
+        ) : (
+          <div className="grid h-full place-items-center p-6 text-center">
+            <div className="max-w-lg rounded-2xl border border-[#D4AF37] bg-gradient-to-b from-[#1e1a10] to-[#0c0a06] p-6 shadow-[0_0_25px_rgba(212,175,55,0.25)]">
+              <p className="text-xs uppercase tracking-[0.22em] text-[#D4AF37]">Premium Access</p>
+              <h3 className="mt-2 text-3xl font-bold text-[#D4AF37]">Unlock Series</h3>
+              <p className="mt-2 text-sm text-[#FFF6D1]">This title requires a one-time $6 unlock for episodes after 20.</p>
               <button
                 type="button"
-                onClick={() => setAutoFailover((current) => !current)}
-                className={`rounded-full border px-3 py-1 font-semibold ${autoFailover ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-[#047857] text-[#FFFDD0]'}`}
+                onClick={() => setShowPremiumModal(true)}
+                className="mt-5 rounded-full border border-[#D4AF37] bg-[#D4AF37] px-7 py-2 text-sm font-bold text-black hover:bg-[#e3c35a]"
               >
-                Auto Failover: {autoFailover ? 'On' : 'Off'}
+                Unlock for $6
               </button>
-              <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=Stream%20Issue`}
-                className="text-xs font-semibold text-[#D4AF37] underline underline-offset-2 transition hover:text-[#f3d47a]"
-              >
-                Report Issue
-              </a>
             </div>
-          </>
+          </div>
         )}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setReloadNonce((current) => current + 1)}
-            className="rounded-full border border-[#D4AF37] bg-[#D4AF37] px-4 py-2 text-xs font-bold text-black transition hover:bg-[#d9bc57] sm:text-sm"
-          >
-            Refresh Player
-          </button>
-
-          {hasPreviousEpisode && (
-            <Link href={previousEpisodeHref as string} className="inline-flex rounded-full border border-[#047857] bg-[#047857] px-5 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]">
-              Previous Episode
-            </Link>
-          )}
-
-          {hasNextEpisode && (
-            <Link href={nextEpisodeHref as string} className="ml-auto inline-flex rounded-full border border-[#047857] bg-[#047857] px-5 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]">
-              Next Episode
-            </Link>
-          )}
-        </div>
       </div>
 
-      <PremiumModal open={openModal} onClose={() => setOpenModal(false)} title={t.unlock} subtitle={t.oneTime} />
+      {!isLocked && (
+        <div className="space-y-3 px-3 py-3 sm:px-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {ELITE_SERVERS.map((server) => {
+              const isActive = server.id === selectedServer;
+              return (
+                <button
+                  key={server.id}
+                  type="button"
+                  onClick={() => {
+                    setIsLoading(true);
+                    setOverlayVisible(true);
+                    setSelectedServer(server.id);
+                  }}
+                  className={`rounded-md border px-2 py-2 text-[11px] font-semibold transition sm:text-xs ${
+                    isActive
+                      ? 'border-[#D4AF37] bg-[#D4AF37] text-black shadow-[0_0_18px_rgba(212,175,55,0.42)]'
+                      : 'border-[#047857] bg-[#050505] text-[#FFFDD0] hover:border-[#D4AF37] hover:text-[#D4AF37]'
+                  }`}
+                >
+                  {server.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-[#047857]/40 px-3 py-3 sm:px-4">
+        {hasPreviousEpisode && (
+          <Link href={previousEpisodeHref as string} className="inline-flex rounded-full border border-[#047857] bg-[#047857] px-5 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]">
+            Previous Episode
+          </Link>
+        )}
+
+        {hasNextEpisode && (
+          <Link href={nextEpisodeHref as string} className="inline-flex rounded-full border border-[#047857] bg-[#047857] px-5 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]">
+            Next Episode
+          </Link>
+        )}
+      </div>
+
+      <PremiumModal open={showPremiumModal} onClose={() => setShowPremiumModal(false)} title="Unlock Full Series" subtitle="One-time payment · $6" />
     </section>
   );
 }
