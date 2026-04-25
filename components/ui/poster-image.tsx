@@ -17,6 +17,7 @@ export function PosterImage({ src, alt, ...props }: PosterImageProps) {
       {...props}
       src={imageSrc}
       alt={alt}
+      unoptimized
       onError={() => setImageSrc(FALLBACK_POSTER)}
     />
   );
