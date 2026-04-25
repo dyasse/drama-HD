@@ -297,6 +297,14 @@ export async function mapAnimeToTmdbTvId(animeId: number, fallbackTitle?: string
   return first?.id ?? null;
 }
 
+
+export async function getSimilarTmdb(mediaType: 'movie' | 'tv', id: number, locale: 'ar' | 'en' | 'fr'): Promise<MediaItem[]> {
+  const language = localeToTmdbLanguage(locale);
+  const data = await fetchTmdb(`/${mediaType}/${id}/similar?language=${language}&page=1`, 1800);
+
+  return (data.results ?? []).slice(0, 20).map((item: any) => mapTmdbItem(item, mediaType));
+}
+
 export async function getWatchMedia(mediaType: 'movie' | 'tv', id: number, locale: 'ar' | 'en' | 'fr'): Promise<MediaItem | null> {
   const detail = await getTmdbDetail(mediaType, id, locale);
   if (!detail) return null;
