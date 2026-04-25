@@ -22,7 +22,7 @@ export function StreamContainer({ iframeKey, src, title, onLoad, onError, overla
         allowFullScreen
         loading="eager"
         referrerPolicy="no-referrer"
-        sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"
+        sandbox="allow-forms allow-same-origin allow-scripts"
         onLoad={onLoad}
         onError={onError}
       />
