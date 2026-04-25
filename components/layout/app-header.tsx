@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Crown } from 'lucide-react';
+import { ShareSiteButton } from '../share-site-button';
 import type { Locale } from '../../i18n/config';
 import { uiCopy } from '../../lib/data/i18n';
 import { LocaleSwitcher } from '../locale-switcher';
@@ -31,6 +32,7 @@ export function AppHeader({ locale, cinemaMode = false }: { locale: Locale; cine
         </nav>
         <div className="flex items-center gap-2">
           <LocaleSwitcher locale={locale} />
+          <ShareSiteButton />
           <ThemeToggle />
         </div>
       </div>
