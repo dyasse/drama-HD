@@ -14,6 +14,15 @@ body {
   @apply bg-cream text-zinc-900 dark:bg-matte dark:text-zinc-100;
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
