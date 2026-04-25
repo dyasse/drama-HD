@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Locale } from '../../i18n/config';
 import { uiCopy } from '../../lib/data/i18n';
 import { getNextEnabledProvider, getProviderDefinitions } from '../../lib/player/providers';
+import type { ProviderDef } from '../../lib/player/types';
 import { PremiumModal } from './premium-modal';
 import { StreamContainer } from './stream-container';
 
@@ -20,7 +21,10 @@ type VideoPlayerProps = {
   maxEpisode?: number;
 };
 
+type ProviderWithUrl = ProviderDef & { url: string };
+
 const PLAYER_TIMEOUT_MS = 12_000;
+const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@dramahd.example';
 
 export function VideoPlayer({
   tmdbId,
@@ -53,28 +57,37 @@ export function VideoPlayer({
   const isPremiumLocked = type === 'tv' && normalizedEpisode > 20;
   const episodeKey = `${normalizedType}-${tmdbId}-${normalizedSeason}-${normalizedEpisode}`;
 
-  const providerLinks = useMemo(
+  const providerLinks = useMemo<ProviderWithUrl[]>(
     () =>
       [...providers]
         .sort((a, b) => a.priority - b.priority)
-        .map((provider) => ({
-          ...provider,
-          url: provider.buildUrl({
+        .map((provider) => {
+          const url = provider.buildUrl({
             type: normalizedType,
             tmdbId,
             season: normalizedSeason,
             episode: normalizedEpisode,
-          }),
-        })),
+          });
+          const enabled = provider.enabled && Boolean(url) && url !== 'about:blank';
+          return { ...provider, enabled, url };
+        }),
     [providers, normalizedEpisode, normalizedSeason, normalizedType, tmdbId],
   );
 
-  const activeProvider = providerLinks[activeServerIndex] ?? providerLinks[0];
+  const enabledProviderCount = providerLinks.filter((provider) => provider.enabled).length;
+  const firstEnabledIndex = providerLinks.findIndex((provider) => provider.enabled);
+  const activeProvider = providerLinks[activeServerIndex] ?? providerLinks[firstEnabledIndex] ?? providerLinks[0];
+  const hasEnabledProviders = firstEnabledIndex >= 0;
 
   const rotateToNextProvider = () => {
-    if (!autoFailover) return;
-    setActiveServerIndex((current) => getNextEnabledProvider(current, providerLinks));
-    setReloadNonce((current) => current + 1);
+    if (!autoFailover || enabledProviderCount <= 1) return;
+
+    setActiveServerIndex((current) => {
+      const nextIndex = getNextEnabledProvider(current, providerLinks);
+      if (nextIndex === current) return current;
+      setReloadNonce((nonce) => nonce + 1);
+      return nextIndex;
+    });
   };
 
   useEffect(() => {
@@ -83,17 +96,21 @@ export function VideoPlayer({
 
   useEffect(() => {
     if (!isMounted) return;
-    const storedProvider = localStorage.getItem(`player-provider:${episodeKey}`);
-    if (!storedProvider) {
-      const firstEnabledIndex = providerLinks.findIndex((provider) => provider.enabled);
-      setActiveServerIndex(firstEnabledIndex >= 0 ? firstEnabledIndex : 0);
-      return;
-    }
 
-    const index = providerLinks.findIndex((provider) => provider.id === storedProvider && provider.enabled);
-    const firstEnabledIndex = providerLinks.findIndex((provider) => provider.enabled);
-    setActiveServerIndex(index >= 0 ? index : firstEnabledIndex >= 0 ? firstEnabledIndex : 0);
-  }, [episodeKey, isMounted, providerLinks]);
+    const defaultIndex = firstEnabledIndex >= 0 ? firstEnabledIndex : 0;
+
+    try {
+      const storedProvider = localStorage.getItem(`player-provider:${episodeKey}`);
+      if (!storedProvider) {
+        setActiveServerIndex(defaultIndex);
+        return;
+      }
+      const index = providerLinks.findIndex((provider) => provider.id === storedProvider && provider.enabled);
+      setActiveServerIndex(index >= 0 ? index : defaultIndex);
+    } catch {
+      setActiveServerIndex(defaultIndex);
+    }
+  }, [episodeKey, firstEnabledIndex, isMounted, providerLinks]);
 
   useEffect(() => {
     setReloadNonce(0);
@@ -102,7 +119,7 @@ export function VideoPlayer({
   }, [tmdbId, normalizedEpisode, normalizedSeason, normalizedType]);
 
   useEffect(() => {
-    if (!isMounted || isPremiumLocked || !hasValidTmdbId || !activeProvider?.enabled) {
+    if (!isMounted || isPremiumLocked || !hasValidTmdbId || !activeProvider?.enabled || !hasEnabledProviders) {
       setIframeSrc(null);
       return;
     }
@@ -119,9 +136,10 @@ export function VideoPlayer({
     return () => {
       if (loadTimeoutRef.current) {
         clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
       }
     };
-  }, [activeProvider?.enabled, activeProvider?.url, hasValidTmdbId, isMounted, isPremiumLocked, reloadNonce]);
+  }, [activeProvider?.enabled, activeProvider?.url, hasEnabledProviders, hasValidTmdbId, isMounted, isPremiumLocked, reloadNonce]);
 
   useEffect(() => {
     setOpenModal(isPremiumLocked);
@@ -133,8 +151,13 @@ export function VideoPlayer({
       clearTimeout(loadTimeoutRef.current);
       loadTimeoutRef.current = null;
     }
-    if (isMounted && activeProvider?.id) {
+
+    if (!isMounted || !activeProvider?.id) return;
+
+    try {
       localStorage.setItem(`player-provider:${episodeKey}`, activeProvider.id);
+    } catch {
+      // ignore storage write errors
     }
   };
 
@@ -169,7 +192,7 @@ export function VideoPlayer({
           </div>
         )}
 
-        {!isPremiumLocked && isMounted && iframeSrc && (
+        {!isPremiumLocked && isMounted && hasEnabledProviders && iframeSrc && (
           <StreamContainer
             iframeKey={`${activeProvider?.id ?? 'p1'}-${tmdbId}-${normalizedSeason}-${normalizedEpisode}-${reloadNonce}`}
             src={iframeSrc}
@@ -179,6 +202,14 @@ export function VideoPlayer({
             overlayVisible={overlayVisible}
             onDismissOverlay={() => setOverlayVisible(false)}
           />
+        )}
+
+        {!isPremiumLocked && isMounted && !hasEnabledProviders && (
+          <div className="grid h-full place-items-center bg-zinc-950/95 px-5 py-10 text-center">
+            <p className="max-w-lg text-sm text-[#FFFDD0]/85 sm:text-base">
+              No licensed streaming providers are currently configured for this title. Please contact support.
+            </p>
+          </div>
         )}
 
         {isPremiumLocked && (
@@ -206,7 +237,11 @@ export function VideoPlayer({
                     key={provider.id}
                     type="button"
                     disabled={!provider.enabled}
-                    onClick={() => setActiveServerIndex(index)}
+                    onClick={() => {
+                      if (!provider.enabled) return;
+                      setActiveServerIndex(index);
+                      setReloadNonce((current) => current + 1);
+                    }}
                     className={`rounded-md border px-3 py-2 text-[11px] font-semibold transition sm:text-xs ${
                       isActive
                         ? 'border-[#D4AF37] bg-[#D4AF37] text-black shadow-[0_0_18px_rgba(212,175,55,0.42)]'
@@ -228,7 +263,7 @@ export function VideoPlayer({
                 Auto Failover: {autoFailover ? 'On' : 'Off'}
               </button>
               <a
-                href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@dramahd.example'}?subject=Stream%20Issue`}
+                href={`mailto:${SUPPORT_EMAIL}?subject=Stream%20Issue`}
                 className="text-xs font-semibold text-[#D4AF37] underline underline-offset-2 transition hover:text-[#f3d47a]"
               >
                 Report Issue

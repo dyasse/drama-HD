@@ -1,69 +1,47 @@
-import type { VideoType } from './types';
+import type { ProviderBuildParams, ProviderDef, ProviderId } from './types';
 
-export type ProviderDef = {
-  id: string;
-  label: string;
-  priority: number;
-  enabled: boolean;
-  buildUrl: (params: { type: VideoType; tmdbId: number; season?: number; episode?: number }) => string;
-};
-
-const PROVIDER_LABELS = [
-  'Provider 1',
-  'Provider 2',
-  'Provider 3',
-  'Provider 4',
-  'Provider 5',
-  'Provider 6',
-  'Provider 7',
-  'Provider 8',
-] as const;
-
-const PROVIDER_ENV_KEYS = [
-  'NEXT_PUBLIC_PROVIDER_1_URL',
-  'NEXT_PUBLIC_PROVIDER_2_URL',
-  'NEXT_PUBLIC_PROVIDER_3_URL',
-  'NEXT_PUBLIC_PROVIDER_4_URL',
-  'NEXT_PUBLIC_PROVIDER_5_URL',
-  'NEXT_PUBLIC_PROVIDER_6_URL',
-  'NEXT_PUBLIC_PROVIDER_7_URL',
-  'NEXT_PUBLIC_PROVIDER_8_URL',
-] as const;
-
+const PROVIDER_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 const PROVIDER_HOST_WHITELIST_ENV = 'NEXT_PUBLIC_PROVIDER_HOST_WHITELIST';
 
-function readRuntimeEnv(key: string): string | undefined {
-  if (typeof process === 'undefined' || !process.env) return undefined;
-  return process.env[key];
+function readRuntimeEnv(key: string): string {
+  if (typeof process === 'undefined' || !process.env) return '';
+  return process.env[key]?.trim() ?? '';
 }
 
-export function parseHostWhitelist(rawList: string | undefined): string[] {
+export function parseHostWhitelist(rawList: string): string[] {
   if (!rawList) return [];
 
   return rawList
     .split(',')
-    .map((item) => item.trim().toLowerCase())
+    .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean);
+}
+
+function normalizeProviderTemplate(template: string): string {
+  return template.trim();
+}
+
+function isValidAbsoluteHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
 }
 
 export function isAllowedProviderHost(url: string, whitelist: string[]): boolean {
   if (!whitelist.length) return true;
 
   try {
-    const parsed = new URL(url);
-    return whitelist.some((allowedHost) => {
-      if (parsed.hostname === allowedHost) return true;
-      return parsed.hostname.endsWith(`.${allowedHost}`);
-    });
+    const hostname = new URL(url).hostname.toLowerCase();
+    return whitelist.some((allowedHost) => hostname === allowedHost || hostname.endsWith(`.${allowedHost}`));
   } catch {
     return false;
   }
 }
 
-export function resolveProviderUrl(
-  template: string,
-  params: { type: VideoType; tmdbId: number; season?: number; episode?: number },
-): string {
+export function resolveProviderUrl(template: string, params: ProviderBuildParams): string {
   const season = params.season ?? 1;
   const episode = params.episode ?? 1;
 
@@ -74,40 +52,42 @@ export function resolveProviderUrl(
     .replaceAll('{e}', String(episode));
 }
 
+function createProviderDef(slot: (typeof PROVIDER_SLOTS)[number], whitelist: string[]): ProviderDef {
+  const envKey = `NEXT_PUBLIC_PROVIDER_${slot}_URL`;
+  const template = normalizeProviderTemplate(readRuntimeEnv(envKey));
+  const id = `p${slot}` as ProviderId;
+  const label = `Provider ${slot}`;
+
+  const hasTemplate = Boolean(template);
+  const templateIsUrlLike = hasTemplate && (template.includes('{') || isValidAbsoluteHttpUrl(template));
+  const enabled = hasTemplate && templateIsUrlLike;
+
+  return {
+    id,
+    label,
+    priority: slot,
+    enabled,
+    buildUrl: (params) => {
+      if (!enabled) return 'about:blank';
+      const resolvedUrl = resolveProviderUrl(template, params);
+      if (!isValidAbsoluteHttpUrl(resolvedUrl)) return 'about:blank';
+      if (!isAllowedProviderHost(resolvedUrl, whitelist)) return 'about:blank';
+      return resolvedUrl;
+    },
+  };
+}
+
 export function getProviderDefinitions(): ProviderDef[] {
   const whitelist = parseHostWhitelist(readRuntimeEnv(PROVIDER_HOST_WHITELIST_ENV));
-
-  return PROVIDER_ENV_KEYS.map((envKey, index) => {
-    const template = readRuntimeEnv(envKey)?.trim();
-    const id = `p${index + 1}`;
-
-    return {
-      id,
-      label: PROVIDER_LABELS[index],
-      priority: index + 1,
-      enabled: Boolean(template),
-      buildUrl: ({ type, tmdbId, season, episode }) => {
-        const fallbackTemplate = 'about:blank';
-        const resolvedUrl = resolveProviderUrl(template || fallbackTemplate, {
-          type,
-          tmdbId,
-          season,
-          episode,
-        });
-
-        return isAllowedProviderHost(resolvedUrl, whitelist) ? resolvedUrl : 'about:blank';
-      },
-    };
-  });
+  return PROVIDER_SLOTS.map((slot) => createProviderDef(slot, whitelist));
 }
 
 export function getNextEnabledProvider(currentIndex: number, providers: ProviderDef[]): number {
   if (!providers.length) return -1;
+
   for (let offset = 1; offset <= providers.length; offset += 1) {
     const nextIndex = (currentIndex + offset) % providers.length;
-    if (providers[nextIndex]?.enabled) {
-      return nextIndex;
-    }
+    if (providers[nextIndex]?.enabled) return nextIndex;
   }
 
   return currentIndex;
