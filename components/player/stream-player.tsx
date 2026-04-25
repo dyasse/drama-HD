@@ -9,8 +9,22 @@ type StreamPlayerProps = {
   locale: Locale;
   title?: string;
   nextEpisodeHref?: string;
+  previousEpisodeHref?: string;
+  maxEpisode?: number;
 };
 
-export function StreamPlayer({ tmdbId, type, season = 1, episode = 1, locale, title, nextEpisodeHref }: StreamPlayerProps) {
-  return <VideoPlayer tmdbId={tmdbId} type={type} season={season} episode={episode} locale={locale} title={title} nextEpisodeHref={nextEpisodeHref} />;
+export function StreamPlayer({ tmdbId, type, season = 1, episode = 1, locale, title, nextEpisodeHref, previousEpisodeHref, maxEpisode }: StreamPlayerProps) {
+  return (
+    <VideoPlayer
+      tmdbId={tmdbId}
+      type={type}
+      season={season}
+      episode={episode}
+      locale={locale}
+      title={title}
+      nextEpisodeHref={nextEpisodeHref}
+      previousEpisodeHref={previousEpisodeHref}
+      maxEpisode={maxEpisode}
+    />
+  );
 }

@@ -9,13 +9,14 @@ import { PosterImage } from '../../../../../components/ui/poster-image';
 import { uiCopy } from '../../../../../lib/data/i18n';
 import { getAnimeDetail, getAnimeEpisodes, getSimilarTmdb, getTmdbDetail, getTvSeasonEpisodes, mapAnimeToTmdbTvId } from '../../../../../lib/data/media';
 
-function getNextEpisodeHref({
+function getAdjacentEpisodeHref({
   locale,
   type,
   id,
   season,
   episode,
   maxEpisode,
+  direction,
 }: {
   locale: string;
   type: 'tv' | 'anime';
@@ -23,9 +24,15 @@ function getNextEpisodeHref({
   season: number;
   episode: number;
   maxEpisode: number;
+  direction: 'next' | 'prev';
 }) {
-  if (episode >= maxEpisode) return null;
-  return `/${locale}/watch/${type}/${id}?season=${season}&episode=${episode + 1}`;
+  if (direction === 'next') {
+    if (episode >= maxEpisode) return null;
+    return `/${locale}/watch/${type}/${id}?season=${season}&episode=${episode + 1}`;
+  }
+
+  if (episode <= 1) return null;
+  return `/${locale}/watch/${type}/${id}?season=${season}&episode=${episode - 1}`;
 }
 
 
@@ -137,13 +144,23 @@ export default async function WatchPage({
     ]);
     if (!show) notFound();
 
-    const nextEpisodeHref = getNextEpisodeHref({
+    const nextEpisodeHref = getAdjacentEpisodeHref({
       locale,
       type: 'tv',
       id: sourceId,
       season: selectedSeason,
       episode: selectedEpisode,
       maxEpisode: seasonData.episodes.length,
+      direction: 'next',
+    });
+    const previousEpisodeHref = getAdjacentEpisodeHref({
+      locale,
+      type: 'tv',
+      id: sourceId,
+      season: selectedSeason,
+      episode: selectedEpisode,
+      maxEpisode: seasonData.episodes.length,
+      direction: 'prev',
     });
 
     return (
@@ -157,6 +174,8 @@ export default async function WatchPage({
           locale={locale as Locale}
           title={show.title}
           nextEpisodeHref={nextEpisodeHref ?? undefined}
+          previousEpisodeHref={previousEpisodeHref ?? undefined}
+          maxEpisode={seasonData.episodes.length}
         />
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-2 px-3 sm:px-0">
           <Link
@@ -243,19 +262,39 @@ export default async function WatchPage({
   const mappedTmdbId = await mapAnimeToTmdbTvId(sourceId, anime.title);
   if (!mappedTmdbId) notFound();
   const recommended = await getSimilarTmdb('tv', mappedTmdbId, locale as Locale);
-  const nextEpisodeHref = getNextEpisodeHref({
+  const nextEpisodeHref = getAdjacentEpisodeHref({
     locale,
     type: 'anime',
     id: sourceId,
     season: 1,
     episode: selectedEpisode,
     maxEpisode: episodes.length,
+    direction: 'next',
+  });
+  const previousEpisodeHref = getAdjacentEpisodeHref({
+    locale,
+    type: 'anime',
+    id: sourceId,
+    season: 1,
+    episode: selectedEpisode,
+    maxEpisode: episodes.length,
+    direction: 'prev',
   });
 
   return (
     <main className="space-y-4 bg-[#050505] px-0 pb-6 text-[#FFFDD0]">
       <WatchAutofocus />
-      <StreamPlayer tmdbId={mappedTmdbId} type="tv" season={1} episode={selectedEpisode} locale={locale as Locale} title={anime.title} nextEpisodeHref={nextEpisodeHref ?? undefined} />
+      <StreamPlayer
+        tmdbId={mappedTmdbId}
+        type="tv"
+        season={1}
+        episode={selectedEpisode}
+        locale={locale as Locale}
+        title={anime.title}
+        nextEpisodeHref={nextEpisodeHref ?? undefined}
+        previousEpisodeHref={previousEpisodeHref ?? undefined}
+        maxEpisode={episodes.length}
+      />
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-2 px-3 sm:px-0">
         <Link
           href={`/${locale}`}

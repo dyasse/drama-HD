@@ -5,11 +5,12 @@ type StreamContainerProps = {
   src: string;
   title: string;
   onLoad: () => void;
+  onError: () => void;
   overlayVisible: boolean;
   onDismissOverlay: () => void;
 };
 
-export function StreamContainer({ iframeKey, src, title, onLoad, overlayVisible, onDismissOverlay }: StreamContainerProps) {
+export function StreamContainer({ iframeKey, src, title, onLoad, onError, overlayVisible, onDismissOverlay }: StreamContainerProps) {
   return (
     <div className="relative h-full w-full">
       <iframe
@@ -17,13 +18,11 @@ export function StreamContainer({ iframeKey, src, title, onLoad, overlayVisible,
         src={src}
         title={title}
         className="h-full w-full"
-        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; web-share"
+        allow="autoplay; fullscreen; encrypted-media"
         allowFullScreen
         referrerPolicy="no-referrer"
-        // @ts-expect-error React's iframe typings miss crossOrigin, but providers require it.
-        crossOrigin="anonymous"
-        sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"
         onLoad={onLoad}
+        onError={onError}
       />
       {overlayVisible && (
         <button
