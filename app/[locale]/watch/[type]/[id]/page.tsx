@@ -99,7 +99,7 @@ export default async function WatchPage({
       <main className="space-y-4 bg-[#050505] px-0 pb-6 text-[#FFFDD0]">
         <WatchAutofocus />
         <StreamPlayer tmdbId={sourceId} type="movie" locale={locale as Locale} title={show.title} />
-        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2 px-3 sm:px-0">
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-2 px-3 sm:px-0">
           <Link
             href={`/${locale}`}
             className="inline-flex items-center rounded-full border border-[#047857] bg-[#047857] px-4 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]"
@@ -158,7 +158,7 @@ export default async function WatchPage({
           title={show.title}
           nextEpisodeHref={nextEpisodeHref ?? undefined}
         />
-        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2 px-3 sm:px-0">
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-2 px-3 sm:px-0">
           <Link
             href={`/${locale}`}
             className="inline-flex items-center rounded-full border border-[#047857] bg-[#047857] px-4 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]"
@@ -180,16 +180,18 @@ export default async function WatchPage({
 
         <section id="episode-list" dir={isArabic ? 'rtl' : 'ltr'} className="mx-auto w-full max-w-5xl scroll-mt-24 px-3 sm:px-0">
           <p className="mb-2 text-sm font-semibold text-[#FFFDD0]">{t.episodeSelector}</p>
-          <div className="mb-3 flex flex-wrap gap-2">
-            {(show.seasons?.length ? show.seasons : [{ seasonNumber: selectedSeason, episodeCount: seasonData.episodes.length, name: `${t.season} ${selectedSeason}` }]).map((season) => (
-              <Link
-                key={season.seasonNumber}
-                href={`/${locale}/watch/tv/${sourceId}?season=${season.seasonNumber}&episode=1`}
-                className={`rounded-full border px-3 py-1 text-sm ${selectedSeason === season.seasonNumber ? 'border-[#D4AF37] bg-[#D4AF37] text-black' : 'border-[#047857]/60 bg-[#047857]/20 text-[#FFFDD0]'}`}
-              >
-                {t.season} {season.seasonNumber}
-              </Link>
-            ))}
+          <div className="mb-3 overflow-x-auto rounded-xl border border-[#047857]/40 bg-black/40 p-2">
+            <div className="flex min-w-max gap-2">
+              {(show.seasons?.length ? show.seasons : [{ seasonNumber: selectedSeason, episodeCount: seasonData.episodes.length, name: `${t.season} ${selectedSeason}` }]).map((season) => (
+                <Link
+                  key={season.seasonNumber}
+                  href={`/${locale}/watch/tv/${sourceId}?season=${season.seasonNumber}&episode=1`}
+                  className={`inline-flex items-center rounded-md border px-3 py-1.5 text-sm ${selectedSeason === season.seasonNumber ? 'border-[#D4AF37] bg-[#D4AF37] text-black' : 'border-[#047857]/60 bg-[#047857]/20 text-[#FFFDD0] hover:border-[#D4AF37]'}`}
+                >
+                  {t.season} {season.seasonNumber}
+                </Link>
+              ))}
+            </div>
           </div>
 
           <p className="mb-2 text-sm font-semibold text-[#047857]">Watching Now · {t.episode} {selectedEpisode}</p>
@@ -254,7 +256,7 @@ export default async function WatchPage({
     <main className="space-y-4 bg-[#050505] px-0 pb-6 text-[#FFFDD0]">
       <WatchAutofocus />
       <StreamPlayer tmdbId={mappedTmdbId} type="tv" season={1} episode={selectedEpisode} locale={locale as Locale} title={anime.title} nextEpisodeHref={nextEpisodeHref ?? undefined} />
-      <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2 px-3 sm:px-0">
+      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-2 px-3 sm:px-0">
         <Link
           href={`/${locale}`}
           className="inline-flex items-center rounded-full border border-[#047857] bg-[#047857] px-4 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]"
