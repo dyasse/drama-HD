@@ -18,9 +18,11 @@ export function StreamContainer({ iframeKey, src, title, onLoad, onError, overla
         src={src}
         title={title}
         className="h-full w-full"
-        allow="autoplay; fullscreen; encrypted-media"
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
         allowFullScreen
-        referrerPolicy="no-referrer"
+        loading="eager"
+        referrerPolicy="strict-origin-when-cross-origin"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-forms"
         onLoad={onLoad}
         onError={onError}
       />

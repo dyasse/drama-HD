@@ -3,7 +3,7 @@ watch all in one
 
 ## Licensed provider failover configuration
 
-The player supports an 8-provider failover registry driven by runtime environment variables.
+The player uses exactly **8 licensed provider slots** from runtime environment variables and automatically fails over between enabled providers.
 
 ### Required environment variables
 
@@ -18,29 +18,33 @@ The player supports an 8-provider failover registry driven by runtime environmen
 
 Optional:
 
-- `NEXT_PUBLIC_PROVIDER_HOST_WHITELIST` (comma-separated hostnames)
-- `NEXT_PUBLIC_SUPPORT_EMAIL` (for the player issue link)
+- `NEXT_PUBLIC_PROVIDER_HOST_WHITELIST` (comma-separated hostnames, e.g. `licensed.example,player.partner.com`)
+- `NEXT_PUBLIC_SUPPORT_EMAIL` (used by the player "Report Issue" action)
 
 ### URL template placeholders
 
-Each provider URL template can include:
+Each provider URL can be a concrete URL or a template with placeholders:
 
-- `{type}` => `movie` or `tv`
-- `{id}` => TMDB ID
-- `{s}` => season number
-- `{e}` => episode number
+- `{type}` → `movie` or `tv`
+- `{id}` → TMDB id
+- `{s}` → season number
+- `{e}` → episode number
 
-Example template:
+Example:
 
 `https://licensed-player.example/embed/{type}/{id}?season={s}&episode={e}`
 
-### Host whitelist behavior
+### Host allowlist behavior
 
-If `NEXT_PUBLIC_PROVIDER_HOST_WHITELIST` is set, final resolved provider URLs are allowed only when their host matches one listed domain (or subdomain). Non-matching providers resolve to `about:blank` and are shown disabled.
+When `NEXT_PUBLIC_PROVIDER_HOST_WHITELIST` is set:
+
+- only matching hosts (or subdomains) are allowed,
+- non-HTTP(S) URLs are rejected,
+- non-matching providers are treated as disabled and never used by the player.
 
 ### Failover behavior
 
-- Player starts with the last successful provider saved per title/episode when available.
-- Automatic failover can be toggled from the player UI.
-- If iframe load times out (12 seconds) or errors, the player rotates to the next enabled provider.
-- `Refresh Player` forces a hard iframe reload via key nonce.
+- The player remembers the last successful provider per title/episode in local storage.
+- Automatic failover can be toggled in the UI.
+- On iframe timeout (12s) or load error, it rotates to the next enabled provider.
+- If no providers are enabled, a support message is shown instead of rendering a broken iframe.

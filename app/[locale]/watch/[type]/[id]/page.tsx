@@ -88,12 +88,14 @@ export default async function WatchPage({
   const { season: seasonRaw, episode: episodeRaw } = await searchParams;
   const mediaType = type === 'tv' ? 'tv' : type === 'movie' ? 'movie' : type === 'anime' ? 'anime' : null;
   const sourceId = Number(id);
-  const selectedSeason = Number(seasonRaw ?? '1');
-  const selectedEpisode = Number(episodeRaw ?? '1');
+  const parsedSeason = Number(seasonRaw ?? '1');
+  const parsedEpisode = Number(episodeRaw ?? '1');
+  const selectedSeason = Math.max(1, Number.isFinite(parsedSeason) ? Math.trunc(parsedSeason) : 1);
+  const selectedEpisode = Math.max(1, Number.isFinite(parsedEpisode) ? Math.trunc(parsedEpisode) : 1);
   const isArabic = locale === 'ar';
   const t = uiCopy[locale as Locale];
 
-  if (!mediaType || [sourceId, selectedSeason, selectedEpisode].some(Number.isNaN)) notFound();
+  if (!mediaType || !Number.isFinite(sourceId) || sourceId <= 0) notFound();
 
   if (mediaType === 'movie') {
     const [show, recommended] = await Promise.all([
