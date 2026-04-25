@@ -75,7 +75,7 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
 
   if (!hasValidTmdbId) {
     return (
-      <section className="w-full overflow-hidden rounded-none border-y-2 border-[#047857] bg-black shadow-[0_0_35px_rgba(212,175,55,0.35)] sm:rounded-2xl sm:border-2">
+      <section className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-[#047857] bg-black shadow-[0_0_0_1px_rgba(4,120,87,0.4),0_0_30px_rgba(212,175,55,0.28)]">
         <div className="grid aspect-video place-items-center px-6 text-center text-[#FFFDD0]" dir={isArabic ? 'rtl' : 'ltr'}>
           <p className="text-base text-[#D4AF37] md:text-lg">
             Video not found, please try another server.
@@ -88,7 +88,7 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
   }
 
   return (
-    <section className="mx-auto w-full overflow-hidden rounded-none border-y-2 border-[#047857] bg-black text-[#FFFDD0] shadow-[0_0_35px_rgba(212,175,55,0.35)] sm:rounded-2xl sm:border-2" dir={isArabic ? 'rtl' : 'ltr'}>
+    <section className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-[#047857] bg-black text-[#FFFDD0] shadow-[0_0_0_1px_rgba(4,120,87,0.4),0_0_30px_rgba(212,175,55,0.28)]" dir={isArabic ? 'rtl' : 'ltr'}>
       <div className="relative aspect-video w-full">
         {(!clientReady || isLoading) && (
           <div className="absolute inset-0 z-20 overflow-hidden bg-gradient-to-br from-[#047857]/35 via-black to-[#D4AF37]/20">
@@ -137,7 +137,7 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
       </div>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-[#047857]/40 bg-black/80 px-3 py-3 sm:px-4">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">Server Switcher</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">Switch Server</span>
         <div className="flex items-center gap-2">
           {serverOptions.map((server) => (
             <button

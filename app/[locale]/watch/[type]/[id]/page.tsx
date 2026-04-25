@@ -152,21 +152,22 @@ export default async function WatchPage({
           <p className="text-xs text-zinc-500 dark:text-zinc-400">{seasonData.seasonTitle}</p>
         </div>
 
-        <section dir={isArabic ? 'rtl' : 'ltr'} className="px-3 sm:px-0">
-          <p className="mb-2 text-sm font-semibold">{t.episodeSelector}</p>
+        <section dir={isArabic ? 'rtl' : 'ltr'} className="mx-auto w-full max-w-5xl px-3 sm:px-0">
+          <p className="mb-2 text-sm font-semibold text-[#FFFDD0]">{t.episodeSelector}</p>
           <div className="mb-3 flex flex-wrap gap-2">
             {(show.seasons?.length ? show.seasons : [{ seasonNumber: selectedSeason, episodeCount: seasonData.episodes.length, name: `${t.season} ${selectedSeason}` }]).map((season) => (
               <Link
                 key={season.seasonNumber}
                 href={`/${locale}/watch/tv/${sourceId}?season=${season.seasonNumber}&episode=1`}
-                className={`rounded-full border px-3 py-1 text-sm ${selectedSeason === season.seasonNumber ? 'border-emerald bg-emerald text-white' : 'border-emerald/40 bg-transparent text-emerald'}`}
+                className={`rounded-full border px-3 py-1 text-sm ${selectedSeason === season.seasonNumber ? 'border-[#D4AF37] bg-[#D4AF37] text-black' : 'border-[#047857]/60 bg-[#047857]/20 text-[#FFFDD0]'}`}
               >
                 {t.season} {season.seasonNumber}
               </Link>
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10">
+          <div className="max-h-72 overflow-y-auto rounded-xl border border-[#047857]/40 bg-black/40 p-2">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10">
             {seasonData.episodes.map((episodeItem) => {
               const episodeNumber = episodeItem.episodeNumber;
               const isActive = selectedEpisode === episodeNumber;
@@ -177,14 +178,15 @@ export default async function WatchPage({
                   href={href}
                   className={`rounded-md border px-3 py-2 text-center text-sm font-medium transition ${
                     isActive
-                      ? 'border-emerald bg-emerald text-white'
-                      : 'border-emerald/50 bg-emerald/10 text-emerald hover:bg-emerald hover:text-white'
+                      ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
+                      : 'border-[#047857]/60 bg-[#047857]/15 text-[#FFFDD0] hover:border-[#D4AF37] hover:text-[#D4AF37]'
                   }`}
                 >
                   {t.episode} {episodeNumber}
                 </Link>
               );
             })}
+            </div>
           </div>
         </section>
 
@@ -226,9 +228,10 @@ export default async function WatchPage({
         <h1 className="text-2xl font-bold">{anime.title}</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">{anime.description}</p>
       </div>
-      <section dir={isArabic ? 'rtl' : 'ltr'} className="px-3 sm:px-0">
-        <p className="mb-2 text-sm font-semibold">{t.episodeSelector}</p>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10">
+      <section dir={isArabic ? 'rtl' : 'ltr'} className="mx-auto w-full max-w-5xl px-3 sm:px-0">
+        <p className="mb-2 text-sm font-semibold text-[#FFFDD0]">{t.episodeSelector}</p>
+        <div className="max-h-72 overflow-y-auto rounded-xl border border-[#047857]/40 bg-black/40 p-2">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10">
           {episodes.map((episodeItem) => {
             const episodeNumber = episodeItem.episodeNumber;
             const isActive = selectedEpisode === episodeNumber;
@@ -239,14 +242,15 @@ export default async function WatchPage({
                 href={href}
                 className={`rounded-md border px-3 py-2 text-center text-sm font-medium transition ${
                   isActive
-                    ? 'border-emerald bg-emerald text-white'
-                    : 'border-emerald/50 bg-emerald/10 text-emerald hover:bg-emerald hover:text-white'
+                    ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
+                    : 'border-[#047857]/60 bg-[#047857]/15 text-[#FFFDD0] hover:border-[#D4AF37] hover:text-[#D4AF37]'
                 }`}
               >
                 {t.episode} {episodeNumber}
               </Link>
             );
           })}
+          </div>
         </div>
       </section>
 
