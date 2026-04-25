@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Locale } from '../../i18n/config';
 import { uiCopy } from '../../lib/data/i18n';
+import { getNextEnabledProvider, getProviderDefinitions } from '../../lib/player/providers';
 import { PremiumModal } from './premium-modal';
 import { StreamContainer } from './stream-container';
 
@@ -15,55 +16,25 @@ type VideoPlayerProps = {
   locale: Locale;
   title?: string;
   nextEpisodeHref?: string;
+  previousEpisodeHref?: string;
+  maxEpisode?: number;
 };
 
-type ServerDefinition = {
-  id: number;
-  label: string;
-  buildUrl: (params: { type: 'movie' | 'tv'; tmdbId: number; season: number; episode: number }) => string;
-};
+const PLAYER_TIMEOUT_MS = 12_000;
 
-const SERVER_DEFINITIONS: ServerDefinition[] = [
-  {
-    id: 1,
-    label: 'Server 1 · Pro',
-    buildUrl: ({ type, tmdbId, season, episode }) => {
-      const base = `https://vidsrc.pro/embed/${type}/${tmdbId}`;
-      return type === 'tv' ? `${base}/${season}/${episode}` : base;
-    },
-  },
-  {
-    id: 2,
-    label: 'Server 2 · VIP',
-    buildUrl: ({ type, tmdbId, season, episode }) =>
-      type === 'tv' ? `https://vidsrc.in/embed/${type}/${tmdbId}/${season}/${episode}` : `https://vidsrc.in/embed/${type}/${tmdbId}`,
-  },
-  {
-    id: 3,
-    label: 'Server 3 · Stable',
-    buildUrl: ({ type, tmdbId, season, episode }) =>
-      type === 'tv' ? `https://embed.su/embed/${type}/${tmdbId}/${season}/${episode}` : `https://embed.su/embed/${type}/${tmdbId}`,
-  },
-  {
-    id: 4,
-    label: 'Server 4 · Global',
-    buildUrl: ({ type, tmdbId, season, episode }) => {
-      const base = `https://vidsrc.xyz/embed/${type}?tmdb=${tmdbId}`;
-      return type === 'tv' ? `${base}&s=${season}&e=${episode}` : base;
-    },
-  },
-  {
-    id: 5,
-    label: 'Server 5 · Backup',
-    buildUrl: ({ type, tmdbId, season, episode }) => {
-      const base = `https://vidsrc.me/embed/${type}?tmdb=${tmdbId}`;
-      return type === 'tv' ? `${base}&s=${season}&e=${episode}` : base;
-    },
-  },
-];
-
-export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, title, nextEpisodeHref }: VideoPlayerProps) {
+export function VideoPlayer({
+  tmdbId,
+  type,
+  season = 1,
+  episode = 1,
+  locale,
+  title,
+  nextEpisodeHref,
+  previousEpisodeHref,
+  maxEpisode,
+}: VideoPlayerProps) {
   const t = uiCopy[locale];
+  const providers = useMemo(() => getProviderDefinitions(), []);
   const [isLoading, setIsLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   const [openModal, setOpenModal] = useState(false);
@@ -71,6 +42,8 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
   const [activeServerIndex, setActiveServerIndex] = useState(0);
+  const [autoFailover, setAutoFailover] = useState(true);
+  const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hasValidTmdbId = Number.isFinite(tmdbId) && tmdbId > 0;
   const isArabic = locale === 'ar';
@@ -78,44 +51,92 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
   const normalizedSeason = Math.max(1, season);
   const normalizedEpisode = Math.max(1, episode);
   const isPremiumLocked = type === 'tv' && normalizedEpisode > 20;
+  const episodeKey = `${normalizedType}-${tmdbId}-${normalizedSeason}-${normalizedEpisode}`;
 
-  const serverLinks = useMemo(
+  const providerLinks = useMemo(
     () =>
-      SERVER_DEFINITIONS.map((server) => ({
-        ...server,
-        url: server.buildUrl({
-          type: normalizedType,
-          tmdbId,
-          season: normalizedSeason,
-          episode: normalizedEpisode,
-        }),
-      })),
-    [normalizedEpisode, normalizedSeason, normalizedType, tmdbId],
+      [...providers]
+        .sort((a, b) => a.priority - b.priority)
+        .map((provider) => ({
+          ...provider,
+          url: provider.buildUrl({
+            type: normalizedType,
+            tmdbId,
+            season: normalizedSeason,
+            episode: normalizedEpisode,
+          }),
+        })),
+    [providers, normalizedEpisode, normalizedSeason, normalizedType, tmdbId],
   );
+
+  const activeProvider = providerLinks[activeServerIndex] ?? providerLinks[0];
+
+  const rotateToNextProvider = () => {
+    if (!autoFailover) return;
+    setActiveServerIndex((current) => getNextEnabledProvider(current, providerLinks));
+    setReloadNonce((current) => current + 1);
+  };
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
-    setActiveServerIndex(0);
+    if (!isMounted) return;
+    const storedProvider = localStorage.getItem(`player-provider:${episodeKey}`);
+    if (!storedProvider) {
+      const firstEnabledIndex = providerLinks.findIndex((provider) => provider.enabled);
+      setActiveServerIndex(firstEnabledIndex >= 0 ? firstEnabledIndex : 0);
+      return;
+    }
+
+    const index = providerLinks.findIndex((provider) => provider.id === storedProvider && provider.enabled);
+    const firstEnabledIndex = providerLinks.findIndex((provider) => provider.enabled);
+    setActiveServerIndex(index >= 0 ? index : firstEnabledIndex >= 0 ? firstEnabledIndex : 0);
+  }, [episodeKey, isMounted, providerLinks]);
+
+  useEffect(() => {
     setReloadNonce(0);
+    setIsLoading(true);
+    setOverlayVisible(true);
   }, [tmdbId, normalizedEpisode, normalizedSeason, normalizedType]);
 
   useEffect(() => {
-    setIsLoading(true);
-    setOverlayVisible(true);
-    if (!isMounted || isPremiumLocked || !hasValidTmdbId) {
+    if (!isMounted || isPremiumLocked || !hasValidTmdbId || !activeProvider?.enabled) {
       setIframeSrc(null);
       return;
     }
 
-    setIframeSrc(serverLinks[activeServerIndex]?.url ?? serverLinks[0]?.url ?? null);
-  }, [activeServerIndex, hasValidTmdbId, isMounted, isPremiumLocked, serverLinks, reloadNonce]);
+    setIframeSrc(activeProvider.url);
+    setIsLoading(true);
+    setOverlayVisible(true);
+
+    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+    loadTimeoutRef.current = setTimeout(() => {
+      rotateToNextProvider();
+    }, PLAYER_TIMEOUT_MS);
+
+    return () => {
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+    };
+  }, [activeProvider?.enabled, activeProvider?.url, hasValidTmdbId, isMounted, isPremiumLocked, reloadNonce]);
 
   useEffect(() => {
     setOpenModal(isPremiumLocked);
   }, [isPremiumLocked]);
+
+  const handleIframeLoaded = () => {
+    setIsLoading(false);
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+      loadTimeoutRef.current = null;
+    }
+    if (isMounted && activeProvider?.id) {
+      localStorage.setItem(`player-provider:${episodeKey}`, activeProvider.id);
+    }
+  };
 
   if (!hasValidTmdbId) {
     return (
@@ -130,6 +151,9 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
       </section>
     );
   }
+
+  const hasPreviousEpisode = type === 'tv' && Boolean(previousEpisodeHref);
+  const hasNextEpisode = type === 'tv' && Boolean(nextEpisodeHref) && (maxEpisode ? normalizedEpisode < maxEpisode : true);
 
   return (
     <section
@@ -147,10 +171,11 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
 
         {!isPremiumLocked && isMounted && iframeSrc && (
           <StreamContainer
-            iframeKey={`${serverLinks[activeServerIndex]?.id ?? 1}-${tmdbId}-${normalizedEpisode}-${reloadNonce}`}
+            iframeKey={`${activeProvider?.id ?? 'p1'}-${tmdbId}-${normalizedSeason}-${normalizedEpisode}-${reloadNonce}`}
             src={iframeSrc}
             title={title ?? t.streamPlayerTitle}
-            onLoad={() => setIsLoading(false)}
+            onLoad={handleIframeLoaded}
+            onError={rotateToNextProvider}
             overlayVisible={overlayVisible}
             onDismissOverlay={() => setOverlayVisible(false)}
           />
@@ -172,31 +197,44 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
 
       <div className="space-y-3 border-t border-[#047857]/40 bg-[#050505] px-3 py-3 sm:px-4">
         {!isPremiumLocked && (
-          <div className="flex flex-wrap items-center gap-2">
-            {serverLinks.map((server, index) => {
-              const isActive = activeServerIndex === index;
-              return (
-                <button
-                  key={server.id}
-                  type="button"
-                  onClick={() => setActiveServerIndex(index)}
-                  className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition sm:text-xs ${
-                    isActive
-                      ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
-                      : 'border-[#047857] bg-[#050505] text-[#FFFDD0] hover:border-[#D4AF37] hover:text-[#D4AF37]'
-                  }`}
-                >
-                  {server.label}
-                </button>
-              );
-            })}
-            <a
-              href="mailto:support@dramahd.example?subject=Stream%20Issue"
-              className="ml-1 text-xs font-semibold text-[#D4AF37] underline underline-offset-2 transition hover:text-[#f3d47a]"
-            >
-              Report Issue
-            </a>
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {providerLinks.map((provider, index) => {
+                const isActive = activeServerIndex === index;
+                return (
+                  <button
+                    key={provider.id}
+                    type="button"
+                    disabled={!provider.enabled}
+                    onClick={() => setActiveServerIndex(index)}
+                    className={`rounded-md border px-3 py-2 text-[11px] font-semibold transition sm:text-xs ${
+                      isActive
+                        ? 'border-[#D4AF37] bg-[#D4AF37] text-black shadow-[0_0_18px_rgba(212,175,55,0.42)]'
+                        : 'border-[#047857] bg-[#050505] text-[#FFFDD0] hover:border-[#D4AF37] hover:text-[#D4AF37]'
+                    } ${!provider.enabled ? 'cursor-not-allowed opacity-40' : ''}`}
+                  >
+                    {provider.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setAutoFailover((current) => !current)}
+                className={`rounded-full border px-3 py-1 font-semibold ${autoFailover ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-[#047857] text-[#FFFDD0]'}`}
+              >
+                Auto Failover: {autoFailover ? 'On' : 'Off'}
+              </button>
+              <a
+                href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@dramahd.example'}?subject=Stream%20Issue`}
+                className="text-xs font-semibold text-[#D4AF37] underline underline-offset-2 transition hover:text-[#f3d47a]"
+              >
+                Report Issue
+              </a>
+            </div>
+          </>
         )}
 
         <div className="flex flex-wrap items-center gap-3">
@@ -208,8 +246,14 @@ export function VideoPlayer({ tmdbId, type, season = 1, episode = 1, locale, tit
             Refresh Player
           </button>
 
-          {nextEpisodeHref && !isPremiumLocked && type === 'tv' && (
-            <Link href={nextEpisodeHref} className="ml-auto inline-flex rounded-full border border-[#047857] bg-[#047857] px-5 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]">
+          {hasPreviousEpisode && (
+            <Link href={previousEpisodeHref as string} className="inline-flex rounded-full border border-[#047857] bg-[#047857] px-5 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]">
+              Previous Episode
+            </Link>
+          )}
+
+          {hasNextEpisode && (
+            <Link href={nextEpisodeHref as string} className="ml-auto inline-flex rounded-full border border-[#047857] bg-[#047857] px-5 py-2 text-sm font-semibold text-[#FFFDD0] transition hover:border-[#D4AF37] hover:text-[#D4AF37]">
               Next Episode
             </Link>
           )}
